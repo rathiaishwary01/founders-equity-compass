@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Simulator } from "@/components/Simulator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ExportButton } from "@/components/ExportButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DEFAULT_STATE, type SimulatorState } from "@/lib/equity/types";
@@ -48,7 +49,13 @@ function ScenarioEditor() {
         }
         setName(data.name);
         setSlug(data.slug);
-        setState({ ...DEFAULT_STATE, ...(data.state as Partial<SimulatorState>) } as SimulatorState);
+        const loaded = data.state as Partial<SimulatorState>;
+        setState({
+          ...DEFAULT_STATE,
+          ...loaded,
+          rounds: { ...DEFAULT_STATE.rounds, ...(loaded.rounds ?? {}) },
+          safe: { ...DEFAULT_STATE.safe, ...(loaded.safe ?? {}) },
+        } as SimulatorState);
         isInitialLoad.current = true;
       });
   }, [id, user, navigate]);
@@ -104,6 +111,7 @@ function ScenarioEditor() {
             <span className="text-xs text-muted-foreground">
               {saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "Saved" : ""}
             </span>
+            <ExportButton state={state} scenarioName={name} />
             <Button variant="outline" size="sm" onClick={copyShare}>
               Copy share link
             </Button>

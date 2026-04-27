@@ -43,19 +43,21 @@ export function computeSnaps(state: SimulatorState): Record<string, Snapshot> {
   let prevPostMoney: number | null = null;
 
   const safe = state.safe;
-  const order: RoundKey[] = ["seed", "a", "b", "c"];
+  const order: RoundKey[] = ["preseed", "seed", "a", "b", "c"];
 
   for (const key of order) {
+    // Backward-compatible: old saved scenarios may not have 'preseed' in rounds
     const r = state.rounds[key];
-    if (!r.enabled) continue;
+    if (!r || !r.enabled) continue;
     const { preMoney: pre, raise: inv, esop: esopT, board: boardC, prefMult, prefType } = r;
     if (!pre || !inv) continue;
 
     // ── SAFE converts at first priced round ──
-    if (safe.enabled && !safeApplied && safe.amount > 0 && safe.cap > 0) {
-      const effPre = Math.min(safe.cap, pre * (1 - safe.discount / 100));
-      const safeDil = effPre / (effPre + safe.amount);
-      cur = cur.map((h) => ({ ...h, pct: h.pct * safeDil }));
+    // MFN / no-cap: effPre = this round's pre-money (same price as round investors)
+    if (safe.enabled && !safeApplied && safe.amount > 0 && (safe.mfn || safe.cap > 0)) {
+      const effPre = safe.mfn
+        ? pre
+        : Math.min(safe.cap, pre * (1 - safe.discount / 100));
       const safePct = (safe.amount / (effPre + safe.amount)) * 100;
       const existTotal2 = cur.reduce((s, h) => s + h.pct, 0);
       const scale2 = (100 - safePct) / existTotal2;

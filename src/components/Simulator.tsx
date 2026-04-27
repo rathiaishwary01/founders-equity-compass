@@ -26,10 +26,14 @@ import {
 import {
   DEFAULT_STATE,
   HOLDER_COLORS,
+  INDIA_DEFAULT_ROUNDS,
   INITIAL_HOLDERS,
   ROUND_BENCHMARKS,
   ROUND_ICONS,
+  ROUND_KEYS,
   ROUND_LABELS,
+  US_DEFAULT_ROUNDS,
+  US_ROUND_BENCHMARKS,
   type RoundConfig,
   type RoundKey,
   type SimulatorState,
@@ -52,7 +56,6 @@ interface Props {
   readOnly?: boolean;
 }
 
-const ROUND_KEYS: RoundKey[] = ["seed", "a", "b", "c"];
 
 export function Simulator({ state, onChange, readOnly = false }: Props) {
   const snaps = useMemo(() => computeSnaps(state), [state]);
@@ -109,9 +112,11 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
     // SAFE validation
     if (state.safe.enabled) {
       if (state.safe.amount <= 0) errs["safe-amount"] = "Amount must be greater than 0";
-      if (state.safe.cap <= 0) errs["safe-cap"] = "Valuation cap must be greater than 0";
-      if (state.safe.cap < state.safe.amount) errs["safe-cap"] = "Cap should be larger than the SAFE amount";
-      if (state.safe.discount < 0 || state.safe.discount > 50) errs["safe-discount"] = "Discount must be between 0% and 50%";
+      if (!state.safe.mfn) {
+        if (state.safe.cap <= 0) errs["safe-cap"] = "Valuation cap must be greater than 0";
+        if (state.safe.cap < state.safe.amount) errs["safe-cap"] = "Cap should be larger than the SAFE amount";
+        if (state.safe.discount < 0 || state.safe.discount > 50) errs["safe-discount"] = "Discount must be between 0% and 50%";
+      }
     }
 
     // Round validation
@@ -151,6 +156,8 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
   const hasParticipatingPreferred = enabledRounds.some((k) => state.rounds[k].prefType === "part");
   const participatingRoundNames = enabledRounds.filter((k) => state.rounds[k].prefType === "part").map((k) => ROUND_LABELS[k]).join(", ");
 
+  const isUS = state.market === "us";
+
   const riskSignals = useMemo(() => {
     const signals: Array<{ tone: "red" | "orange" | "yellow" | "green"; text: string }> = [];
 
@@ -158,57 +165,62 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
     if (latest.vcSeats >= founderSeats) {
       signals.push({
         tone: "red",
-        text: `VCs hold ${latest.vcSeats} board seats — independent director decides all key votes`,
+        text: isUS
+          ? `VCs hold ${latest.vcSeats} board seats — under DGCL, the board controls CEO hiring/firing, M&A approval, and company strategy`
+          : `VCs hold ${latest.vcSeats} board seats — independent director decides all key votes`,
       });
     } else {
       signals.push({
         tone: "green",
-        text: `Founder-controlled board: ${founderSeats} vs ${latest.vcSeats} VC seats`,
+        text: isUS
+          ? `Founder-controlled board: ${founderSeats} vs ${latest.vcSeats} VC seats — protected under your Delaware SHA`
+          : `Founder-controlled board: ${founderSeats} vs ${latest.vcSeats} VC seats`,
       });
     }
 
-    // Signal 2 — Equity threshold
-    if (founderPct < 26) {
-      signals.push({
-        tone: "red",
-        text: `Founders at ${founderPct.toFixed(1)}% — below 26%, VCs can block ALL major decisions`,
-      });
-    } else if (founderPct < 51) {
-      signals.push({
-        tone: "orange",
-        text: `Founders at ${founderPct.toFixed(1)}% — lost simple majority`,
-      });
-    } else if (founderPct < 75) {
-      signals.push({
-        tone: "yellow",
-        text: `Founders at ${founderPct.toFixed(1)}% — VCs have special resolution blocking power`,
-      });
+    // Signal 2 — Equity threshold (statutory in India, contractual in US)
+    if (isUS) {
+      if (founderPct < 30) {
+        signals.push({
+          tone: "red",
+          text: `Founders at ${founderPct.toFixed(1)}% — US VCs rely on contractual protective provisions, not statutory thresholds. At this level, most exit decisions require investor approval.`,
+        });
+      } else if (founderPct < 50) {
+        signals.push({
+          tone: "orange",
+          text: `Founders at ${founderPct.toFixed(1)}% — lost simple majority. US term sheets grant VCs veto rights over M&A, new share classes, and charter amendments regardless of %.`,
+        });
+      }
+    } else {
+      if (founderPct < 26) {
+        signals.push({ tone: "red", text: `Founders at ${founderPct.toFixed(1)}% — below 26%, VCs can block ALL major decisions under Companies Act 2013` });
+      } else if (founderPct < 51) {
+        signals.push({ tone: "orange", text: `Founders at ${founderPct.toFixed(1)}% — lost simple majority` });
+      } else if (founderPct < 75) {
+        signals.push({ tone: "yellow", text: `Founders at ${founderPct.toFixed(1)}% — VCs have special resolution blocking power (75% threshold)` });
+      }
     }
 
     // Signal 3 — VC combined stake
     if (vcPct > 50) {
-      signals.push({
-        tone: "red",
-        text: `VCs combined at ${vcPct.toFixed(1)}% — can override founders on ordinary resolutions`,
-      });
+      signals.push({ tone: "red", text: `VCs combined at ${vcPct.toFixed(1)}% — can override founders on ordinary resolutions` });
     } else if (vcPct > 26) {
       signals.push({
         tone: "orange",
-        text: `VCs at ${vcPct.toFixed(1)}% — can veto M&A, SHA changes, new share issuances`,
+        text: isUS
+          ? `VCs at ${vcPct.toFixed(1)}% — protective provisions give veto over M&A, new share issuances, and certificate of incorporation amendments`
+          : `VCs at ${vcPct.toFixed(1)}% — can veto M&A, SHA changes, new share issuances`,
       });
     }
 
-    // Signal 4 — Preference overhang (only if totalPref > 0)
+    // Signal 4 — Preference overhang
     if (totalPref > 0) {
       const overhangRatio = state.exitValue > 0 ? totalPref / state.exitValue : 0;
       const tone = overhangRatio > 0.5 ? "red" : overhangRatio > 0.25 ? "orange" : "yellow";
-      signals.push({
-        tone,
-        text: `${fmtM(totalPref)} liquidation overhang — founders receive $0 in any exit below this amount`,
-      });
+      signals.push({ tone, text: `${fmtM(totalPref)} liquidation overhang — founders receive $0 in any exit below this amount` });
     }
 
-    // Signal 5 — Participating preferred (only if any round has prefType==='part')
+    // Signal 5 — Participating preferred
     if (hasParticipatingPreferred) {
       signals.push({
         tone: "orange",
@@ -216,8 +228,31 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
       });
     }
 
-    return signals.slice(0, 5);
+    // US-specific signals
+    if (isUS) {
+      signals.push({
+        tone: "yellow",
+        text: "Indian-incorporated entity: US institutional VCs (YC, Sequoia US, a16z) typically require a Delaware C-Corp flip before closing. Budget $30–50K and 60–90 days.",
+      });
+      if (state.safe.enabled) {
+        signals.push({
+          tone: "yellow",
+          text: "YC post-money SAFE: investor dilution is fixed at SAFE ÷ cap. All future dilution (ESOP top-ups, bridge rounds) falls entirely on founders until conversion.",
+        });
+      }
+    } else {
+      // India-specific: FEMA / foreign investment signal if any VC rounds
+      if (anyRoundsEnabled) {
+        signals.push({
+          tone: "yellow",
+          text: "Foreign VC investment requires FEMA compliance — file FC-GPR within 30 days of allotment. Ensure pricing is at or above FMV per SEBI norms.",
+        });
+      }
+    }
+
+    return signals.slice(0, 6);
   }, [
+    isUS,
     latest.vcSeats,
     founderSeats,
     founderPct,
@@ -226,18 +261,24 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
     state.exitValue,
     hasParticipatingPreferred,
     participatingRoundNames,
+    state.safe.enabled,
+    anyRoundsEnabled,
   ]);
 
   const recommendations = useMemo(() => {
     const recs: Array<{ action: string; impact: string; detail: string }> = [];
     const vcSeats = latest.vcSeats;
 
+    // ── Board control (shared logic, market-aware text) ──────────────────────
     if (vcSeats >= founderSeats + 1) {
       recs.push({
         action: `CRITICAL: You have lost board control — VCs hold ${vcSeats} seats vs your ${founderSeats}`,
-        impact: "VCs can now remove the CEO, block acquisitions, and override strategy without founder consent",
-        detail:
-          "Push every round to observer-only except the lead investor. Negotiate founders nominate the independent director. Add unanimous board consent for CEO removal to the SHA.",
+        impact: isUS
+          ? "Under DGCL, the board controls CEO hiring/firing, M&A approval, and equity issuances — without founder majority, you can be removed"
+          : "VCs can now remove the CEO, block acquisitions, and override strategy without founder consent",
+        detail: isUS
+          ? "Push every round to observer-only. Negotiate that founders nominate the independent director. Add a supermajority board consent requirement for CEO removal in your SHA."
+          : "Push every round to observer-only except the lead investor. Negotiate founders nominate the independent director. Add unanimous board consent for CEO removal to the SHA.",
       });
     }
 
@@ -245,59 +286,99 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
       recs.push({
         action: `Board is tied ${founderSeats}-${vcSeats}: the independent director decides everything`,
         impact: "Whoever nominates the independent director effectively controls your company",
-        detail:
-          "Push for: founders have the right to nominate the independent director in the SHA. Independent must not be an LP in any VC fund on the board.",
+        detail: isUS
+          ? "Push for: founders nominate the independent director in the SHA. Independent must not be a GP or LP in any VC fund represented on the board (conflict check required under DGCL)."
+          : "Push for: founders have the right to nominate the independent director in the SHA. Independent must not be an LP in any VC fund on the board.",
       });
     }
 
+    // ── Dual-class shares ────────────────────────────────────────────────────
     if (anyRoundsEnabled) {
       recs.push({
-        action: "Set up dual-class shares (10:1 voting) BEFORE your first round closes",
+        action: isUS
+          ? "Set up dual-class shares (Class A / Class B, 10:1 voting) in Delaware BEFORE your first priced round"
+          : "Set up dual-class shares (10:1 voting) BEFORE your first round closes",
         impact: "Decouples equity dilution from voting control permanently",
-        detail:
-          "Founders get Class B shares with 10 votes each. Even at 20% equity you retain 70%+ of votes. Cannot be done after VCs invest.",
+        detail: isUS
+          ? "Delaware C-Corps support dual-class structures natively (see Google, Meta, Snap). Class B shares give founders 10 votes each. Even at 15% equity you retain majority votes. Cannot be added retroactively after VCs invest."
+          : "Founders get Class B shares with 10 votes each. Even at 20% equity you retain 70%+ of votes. Cannot be done after VCs invest.",
       });
     }
 
+    // ── Board seat cap ───────────────────────────────────────────────────────
     if (anyRoundsEnabled && vcSeats >= 1 && vcSeats < founderSeats + 1) {
       recs.push({
         action: "Add a hard cap in your SHA: all VCs combined hold max 2 board seats ever",
         impact: "Without this, each new round demands a seat — you lose board control by Series B",
-        detail:
-          "SHA clause: 'All investor directors combined shall not exceed 2 seats at any time, regardless of future financing.'",
+        detail: isUS
+          ? "SHA / IRA clause: 'All Investor Directors combined shall not exceed 2 seats at any time, regardless of future financing rounds.' Delaware courts enforce this."
+          : "SHA clause: 'All investor directors combined shall not exceed 2 seats at any time, regardless of future financing.'",
       });
     }
 
+    // ── Series A 2-seat risk ─────────────────────────────────────────────────
     if (state.rounds.a.enabled && state.rounds.a.board === "2") {
       recs.push({
         action: "Reduce Series A VC board seats from 2 to 1",
         impact: "Preserves founder board majority through Series B",
-        detail:
-          "2 VC seats at Series A plus 1 at Series B = founders tied with VCs. The independent director becomes kingmaker.",
+        detail: "2 VC seats at Series A plus 1 at Series B = founders tied with VCs. The independent director becomes kingmaker.",
       });
     }
 
+    // ── Participating preferred ──────────────────────────────────────────────
     if (hasParticipatingPreferred) {
       recs.push({
         action: "Remove participating preferred — negotiate non-participating across all rounds",
-        impact: "Participating preferred means VCs get their money back AND share the remaining exit — founders lose 20-40% of take-home",
-        detail:
-          "This is the most founder-unfriendly term after board control. Standard market rate is non-participating at every stage.",
+        impact: "Participating preferred means VCs get their money back AND share the remaining exit — founders lose 20–40% of take-home",
+        detail: isUS
+          ? "Non-participating 1× is the NVCA standard in the US. Participating preferred has become rare post-2015 in Silicon Valley — cite this in negotiations."
+          : "This is the most founder-unfriendly term after board control. Standard market rate is non-participating at every stage.",
       });
     }
 
+    // ── 2× preference ───────────────────────────────────────────────────────
     const hasAggressivePref = enabledRounds.some((k) => state.rounds[k].prefMult >= 2);
     if (hasAggressivePref) {
       recs.push({
         action: "Push back on 2× liquidation preference",
         impact: "2× means VCs get double their money before founders see anything",
-        detail:
-          "1× non-participating is the market standard. Anything above 1× is aggressive — use competing term sheets as leverage.",
+        detail: "1× non-participating is the market standard globally. Anything above 1× is aggressive — use competing term sheets as leverage.",
+      });
+    }
+
+    // ── US-specific recommendations ──────────────────────────────────────────
+    if (isUS) {
+      recs.push({
+        action: "Flip to a Delaware C-Corp BEFORE closing with US VCs",
+        impact: "Most US institutional investors (YC, Sequoia US, a16z, General Catalyst) legally cannot invest in Indian-incorporated entities",
+        detail: "Engage a startup law firm for a 'flip' — the Indian entity becomes a wholly-owned subsidiary of a new Delaware C-Corp. Budget $30–50K in legal fees and 60–90 days lead time. Do this before your first US term sheet arrives.",
+      });
+      recs.push({
+        action: "Use YC's post-money SAFE template — avoid custom SAFE terms",
+        impact: "Post-money SAFE fixes investor dilution; all future dilution (ESOP top-ups, bridge rounds) falls entirely on founders until the SAFE converts",
+        detail: "Download from ycombinator.com/documents. Insist on MFN (Most Favoured Nation) clause for earliest investors so they get the best cap if later SAFEs are cheaper. Avoid side letters that add hidden information rights or pro-rata obligations.",
+      });
+      recs.push({
+        action: "Get a 409A valuation within 12 months of each ESOP grant",
+        impact: "IRS requires a 409A for ISO grants. Skipping it means all options become NSOs — employees lose capital gains tax treatment worth $50K–$500K per senior hire",
+        detail: "Budget $5–15K per 409A from Carta, Capshare, or a Big 4 team. Trigger a new 409A after each priced round closes, after a material financing event, and annually. ISOs should go to US employees; NSOs to international team members.",
+      });
+    } else {
+      // ── India-specific recommendations ──────────────────────────────────────
+      recs.push({
+        action: "File FC-GPR with RBI within 30 days of every foreign VC allotment",
+        impact: "Non-filing attracts compounding penalties under FEMA — can block future rounds and exits",
+        detail: "Use an authorised dealer bank (HDFC, ICICI, Kotak). Price each share at or above FMV per SEBI DCF/NAV norms. Get a CS to handle allotment paperwork before funds arrive.",
+      });
+      recs.push({
+        action: "Use CCDs (Compulsorily Convertible Debentures) for pre-seed, not equity",
+        impact: "CCDs defer FMV valuation requirements until conversion — cleaner than equity rounds for early cheques under ₹5Cr",
+        detail: "Interest rate must be arm's length (6–12% typical). Conversion terms trigger at Series A priced round. Avoid SAFEs for Indian-entity raises — RBI hasn't provided clear guidance on their treatment.",
       });
     }
 
     return recs;
-  }, [latest.vcSeats, founderSeats, anyRoundsEnabled, state.rounds, enabledRounds, hasParticipatingPreferred]);
+  }, [isUS, latest.vcSeats, founderSeats, anyRoundsEnabled, state.rounds, enabledRounds, hasParticipatingPreferred]);
 
   // Line chart data with dynamic Y max (BUG FIX 2)
   const lineData = snapKeys.map((k) => {
@@ -382,6 +463,58 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
 
         {/* ── ROUNDS ── */}
         <TabsContent value="rounds" className="space-y-3 mt-4">
+
+          {/* Market toggle */}
+          <div className="flex items-center gap-1 rounded-xl bg-muted p-1">
+            <button
+              disabled={readOnly}
+              onClick={() => {
+                if (readOnly || state.market === "india") return;
+                const noRoundsActive = ROUND_KEYS.every((k) => !state.rounds[k].enabled);
+                onChange({
+                  ...state,
+                  market: "india",
+                  rounds: noRoundsActive ? INDIA_DEFAULT_ROUNDS : state.rounds,
+                });
+              }}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-all",
+                state.market !== "us"
+                  ? "bg-white shadow text-foreground dark:bg-background"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              🇮🇳 India
+            </button>
+            <button
+              disabled={readOnly}
+              onClick={() => {
+                if (readOnly || state.market === "us") return;
+                const noRoundsActive = ROUND_KEYS.every((k) => !state.rounds[k].enabled);
+                onChange({
+                  ...state,
+                  market: "us",
+                  rounds: noRoundsActive ? US_DEFAULT_ROUNDS : state.rounds,
+                });
+              }}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-all",
+                state.market === "us"
+                  ? "bg-white shadow text-foreground dark:bg-background"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              🇺🇸 United States
+            </button>
+          </div>
+
+          {/* US context banner */}
+          {isUS && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
+              <span className="font-bold">US mode</span> — Round sizes default to US norms ($M). Insights reflect Delaware C-Corp structure, YC SAFE terms, 409A requirements, and NVCA protective provisions.
+            </div>
+          )}
+
           {/* Founder seats config (BUG FIX 3) */}
           <Card className="p-4">
             <div className="flex items-center gap-1.5 mb-1">
@@ -464,8 +597,40 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             {state.safe.enabled && (
               <div className="space-y-3">
                 <div className="text-xs bg-muted rounded-md px-3 py-2 text-muted-foreground">
-                  SAFEs convert to equity at your first priced round. Dilution hits founders at conversion, not when raised.
+                  {isUS
+                    ? "YC post-money SAFE: converts at your first priced round. Use MFN (no cap) to model YC's $375K SAFE — it converts at the same price as your Seed investors."
+                    : "SAFEs convert to equity at your first priced round. In India, CCDs (Compulsorily Convertible Debentures) are the more common equivalent for RBI compliance."}
                 </div>
+
+                {/* MFN / No-cap toggle */}
+                <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                  <div>
+                    <div className="text-xs font-semibold">MFN / No cap (YC standard)</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">Converts at the next round's pre-money price — same as other investors. No cap, no discount.</div>
+                  </div>
+                  <Switch
+                    checked={state.safe.mfn ?? false}
+                    disabled={readOnly}
+                    onCheckedChange={(v) => updateSafe("mfn", v)}
+                  />
+                </div>
+
+                {/* YC quick-fill */}
+                {isUS && (
+                  <button
+                    disabled={readOnly}
+                    onClick={() => {
+                      if (readOnly) return;
+                      onChange({
+                        ...state,
+                        safe: { ...state.safe, enabled: true, amount: 0.375, mfn: true, cap: 0, discount: 0 },
+                      });
+                    }}
+                    className="w-full rounded-lg border border-dashed border-primary/40 bg-primary/5 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors"
+                  >
+                    ⚡ Fill YC $375K MFN SAFE
+                  </button>
+                )}
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -492,71 +657,111 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                     />
                     {validationErrors["safe-amount"] && <p className="text-[10px] text-red-500 mt-1">{validationErrors["safe-amount"]}</p>}
                   </div>
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <Label className="text-[10px] uppercase text-muted-foreground">Valuation Cap ($M)</Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">?</button>
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-[220px] text-xs">
-                            <p className="font-bold text-primary mb-1">Valuation Cap</p>
-                            <p>Maximum valuation at which the SAFE converts. Protects early investors if the company grows fast before Seed.</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+
+                  {!state.safe.mfn && <>
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Label className="text-[10px] uppercase text-muted-foreground">Valuation Cap ($M)</Label>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">?</button>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-[220px] text-xs">
+                              <p className="font-bold text-primary mb-1">Valuation Cap</p>
+                              <p>Maximum valuation at which the SAFE converts. Protects early investors if the company grows fast before Seed.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                      <Input
+                        type="number"
+                        value={state.safe.cap}
+                        disabled={readOnly}
+                        className={validationErrors["safe-cap"] ? "border-red-400" : ""}
+                        onChange={(e) => { updateSafe("cap", parseFloat(e.target.value) || 0); }}
+                      />
+                      {validationErrors["safe-cap"] && <p className="text-[10px] text-red-500 mt-1">{validationErrors["safe-cap"]}</p>}
                     </div>
-                    <Input
-                      type="number"
-                      value={state.safe.cap}
-                      disabled={readOnly}
-                      className={validationErrors["safe-cap"] ? "border-red-400" : ""}
-                      onChange={(e) => { updateSafe("cap", parseFloat(e.target.value) || 0); }}
-                    />
-                    {validationErrors["safe-cap"] && <p className="text-[10px] text-red-500 mt-1">{validationErrors["safe-cap"]}</p>}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <Label className="text-[10px] uppercase text-muted-foreground">Discount (%)</Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">?</button>
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-[220px] text-xs">
-                            <p className="font-bold text-primary mb-1">SAFE Discount</p>
-                            <p>SAFE investors get shares at X% cheaper than Seed investors. The SAFE takes the better of cap price or discounted price.</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Label className="text-[10px] uppercase text-muted-foreground">Discount (%)</Label>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">?</button>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-[220px] text-xs">
+                              <p className="font-bold text-primary mb-1">SAFE Discount</p>
+                              <p>SAFE investors get shares at X% cheaper than Seed investors. The SAFE takes the better of cap price or discounted price.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                      <Input
+                        type="number"
+                        value={state.safe.discount}
+                        disabled={readOnly}
+                        className={validationErrors["safe-discount"] ? "border-red-400" : ""}
+                        onChange={(e) => { updateSafe("discount", parseFloat(e.target.value) || 0); }}
+                      />
+                      {validationErrors["safe-discount"] && <p className="text-[10px] text-red-500 mt-1">{validationErrors["safe-discount"]}</p>}
                     </div>
-                    <Input
-                      type="number"
-                      value={state.safe.discount}
-                      disabled={readOnly}
-                      className={validationErrors["safe-discount"] ? "border-red-400" : ""}
-                      onChange={(e) => { updateSafe("discount", parseFloat(e.target.value) || 0); }}
-                    />
-                    {validationErrors["safe-discount"] && <p className="text-[10px] text-red-500 mt-1">{validationErrors["safe-discount"]}</p>}
-                  </div>
+                  </>}
                 </div>
+
+                {state.safe.mfn && (
+                  <div className="rounded-md bg-blue-50 border border-blue-200 px-3 py-2 text-[10px] text-blue-700 dark:bg-blue-950/40 dark:border-blue-800 dark:text-blue-200">
+                    MFN SAFE converts at the next priced round's pre-money valuation — no cap, no discount. This matches the YC $375K standard SAFE.
+                  </div>
+                )}
               </div>
             )}
           </Card>}
 
           {ROUND_KEYS.map((k) => {
             const r = state.rounds[k];
+            if (!r) return null;
             const dil = r.preMoney && r.raise ? (r.raise / (r.preMoney + r.raise)) * 100 : 0;
-            const bench = ROUND_BENCHMARKS[k];
+            const bench = (isUS ? US_ROUND_BENCHMARKS : ROUND_BENCHMARKS)[k];
             const dilCls = dil === 0 ? "text-muted-foreground" : dil <= bench.hi ? "text-success" : dil <= bench.hi + 5 ? "text-warning" : "text-danger";
+            const isPreSeed = k === "preseed";
             return (
               <Card key={k} className="p-4">
                 <div className="flex items-center gap-3 mb-3">
                   <span className="text-xl">{ROUND_ICONS[k]}</span>
                   <div className="font-bold flex-1">{ROUND_LABELS[k]}</div>
+                  {isPreSeed && isUS && !r.enabled && (
+                    <button
+                      disabled={readOnly}
+                      onClick={() => {
+                        if (readOnly) return;
+                        // YC standard: $125K for 7% → pre-money $1.661M
+                        updateRound(k, { enabled: true, preMoney: 1.661, raise: 0.125, esop: 0, board: "observer" });
+                        // Also suggest enabling the MFN SAFE
+                        if (!state.safe.enabled) {
+                          onChange({
+                            ...state,
+                            rounds: { ...state.rounds, [k]: { ...state.rounds[k], enabled: true, preMoney: 1.661, raise: 0.125, esop: 0, board: "observer" } },
+                            safe: { ...state.safe, enabled: true, amount: 0.375, mfn: true, cap: 0, discount: 0 },
+                          });
+                        }
+                      }}
+                      className="rounded-lg border border-dashed border-primary/40 bg-primary/5 px-2 py-1 text-[10px] font-semibold text-primary hover:bg-primary/10 transition-colors"
+                    >
+                      ⚡ YC Standard
+                    </button>
+                  )}
                   <Switch checked={r.enabled} disabled={readOnly} onCheckedChange={(v) => updateRound(k, { enabled: v })} />
                 </div>
+                {isPreSeed && r.enabled && (
+                  <div className="mb-3 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-[10px] text-amber-800 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-200">
+                    {isUS
+                      ? "YC deal: $125K for 7% direct equity + $375K MFN SAFE (enable SAFE panel above). Pre-money auto-set to $1.661M so raise ÷ post = 7%."
+                      : "Pre-seed equity round — typically angels, accelerators, or friends & family. No ESOP top-up required at this stage."}
+                    {dil > 0 && <span className="ml-2 font-bold">Computed equity given: {dil.toFixed(1)}%</span>}
+                  </div>
+                )}
                 {r.enabled && (
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">

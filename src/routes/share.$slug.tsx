@@ -34,7 +34,13 @@ function SharedView() {
           return;
         }
         setName(data.name);
-        setState({ ...DEFAULT_STATE, ...(data.state as Partial<SimulatorState>) } as SimulatorState);
+        const loaded = data.state as Partial<SimulatorState>;
+        setState({
+          ...DEFAULT_STATE,
+          ...loaded,
+          rounds: { ...DEFAULT_STATE.rounds, ...(loaded.rounds ?? {}) },
+          safe: { ...DEFAULT_STATE.safe, ...(loaded.safe ?? {}) },
+        } as SimulatorState);
       });
   }, [slug]);
 
