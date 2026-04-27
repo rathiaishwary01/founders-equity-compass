@@ -102,6 +102,35 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
   const allPayouts = calcPayouts(latest, state.exitValue, state.usePref);
   const vcTotal = latest.holders.filter((h) => h.type === "vc").reduce((s, h) => s + (allPayouts[h.name] || 0), 0);
 
+  // ── Input validation ──
+  const validationErrors = useMemo(() => {
+    const errs: Record<string, string> = {};
+
+    // SAFE validation
+    if (state.safe.enabled) {
+      if (state.safe.amount <= 0) errs["safe-amount"] = "Amount must be greater than 0";
+      if (state.safe.cap <= 0) errs["safe-cap"] = "Valuation cap must be greater than 0";
+      if (state.safe.cap < state.safe.amount) errs["safe-cap"] = "Cap should be larger than the SAFE amount";
+      if (state.safe.discount < 0 || state.safe.discount > 50) errs["safe-discount"] = "Discount must be between 0% and 50%";
+    }
+
+    // Round validation
+    ROUND_KEYS.forEach((k) => {
+      const r = state.rounds[k];
+      if (!r.enabled) return;
+      if (!r.preMoney || r.preMoney <= 0) errs[`${k}-pre`] = "Pre-money must be greater than 0";
+      if (!r.raise || r.raise <= 0) errs[`${k}-raise`] = "Raise must be greater than 0";
+      if (r.preMoney > 0 && r.raise > 0 && r.raise >= r.preMoney) {
+        errs[`${k}-raise`] = "Raise is larger than pre-money — VC would own over 50%. Double-check these numbers.";
+      }
+      if (r.esop < 0 || r.esop > 30) errs[`${k}-esop`] = "ESOP must be between 0% and 30%";
+    });
+
+    return errs;
+  }, [state.safe, state.rounds]);
+
+  const hasErrors = Object.keys(validationErrors).length > 0;
+
   const enabledRounds = ROUND_KEYS.filter((k) => state.rounds[k].enabled);
   const roundsEnabledCount = enabledRounds.length;
   const anyRoundsEnabled = roundsEnabledCount > 0;
@@ -312,6 +341,14 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
         </Card>
       </div>
 
+      {/* Global validation warning */}
+      {hasErrors && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 text-xs text-red-600 font-semibold">
+          <span>⚠️</span>
+          <span>Some inputs have errors — results may be inaccurate. Check the highlighted fields below.</span>
+        </div>
+      )}
+
       {/* Beginner / Expert toggle */}
       <div className="flex items-center justify-end gap-2">
         <span className={cn("text-xs font-semibold", !expertMode ? "text-primary" : "text-muted-foreground")}>Beginner</span>
@@ -331,15 +368,17 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
         if (!expertMode && (v === "veto" || v === "protect")) return;
         setActiveTab(v);
       }} className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
-          <TabsTrigger value="rounds">⚙️ Rounds</TabsTrigger>
-          <TabsTrigger value="captable">📋 Cap Table</TabsTrigger>
-          <TabsTrigger value="board">🏛️ Board</TabsTrigger>
-          <TabsTrigger value="veto" className={cn(!expertMode && "opacity-30 pointer-events-none")}>🛡️ Veto</TabsTrigger>
-          <TabsTrigger value="protect" className={cn(!expertMode && "opacity-30 pointer-events-none")}>🔒 Protect</TabsTrigger>
-          <TabsTrigger value="exit">💰 Exit</TabsTrigger>
-          <TabsTrigger value="compare">📊 Compare</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1 pb-1">
+          <TabsList className="flex w-max min-w-full h-auto gap-1 p-1">
+            <TabsTrigger value="rounds" className="flex-shrink-0 text-xs px-3 py-2">⚙️ Rounds</TabsTrigger>
+            <TabsTrigger value="captable" className="flex-shrink-0 text-xs px-3 py-2">📋 Cap Table</TabsTrigger>
+            <TabsTrigger value="board" className="flex-shrink-0 text-xs px-3 py-2">🏛️ Board</TabsTrigger>
+            <TabsTrigger value="veto" className={cn("flex-shrink-0 text-xs px-3 py-2", !expertMode && "opacity-30 pointer-events-none")}>🛡️ Veto</TabsTrigger>
+            <TabsTrigger value="protect" className={cn("flex-shrink-0 text-xs px-3 py-2", !expertMode && "opacity-30 pointer-events-none")}>🔒 Protect</TabsTrigger>
+            <TabsTrigger value="exit" className="flex-shrink-0 text-xs px-3 py-2">💰 Exit</TabsTrigger>
+            <TabsTrigger value="compare" className="flex-shrink-0 text-xs px-3 py-2">📊 Compare</TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* ── ROUNDS ── */}
         <TabsContent value="rounds" className="space-y-3 mt-4">
@@ -448,11 +487,10 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                       type="number"
                       value={state.safe.amount}
                       disabled={readOnly}
-                      onChange={(e) => {
-                        const value = parseFloat(e.target.value) || 0;
-                        updateSafe("amount", value);
-                      }}
+                      className={validationErrors["safe-amount"] ? "border-red-400" : ""}
+                      onChange={(e) => { updateSafe("amount", parseFloat(e.target.value) || 0); }}
                     />
+                    {validationErrors["safe-amount"] && <p className="text-[10px] text-red-500 mt-1">{validationErrors["safe-amount"]}</p>}
                   </div>
                   <div>
                     <div className="flex items-center gap-1.5 mb-1">
@@ -473,11 +511,10 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                       type="number"
                       value={state.safe.cap}
                       disabled={readOnly}
-                      onChange={(e) => {
-                        const value = parseFloat(e.target.value) || 0;
-                        updateSafe("cap", value);
-                      }}
+                      className={validationErrors["safe-cap"] ? "border-red-400" : ""}
+                      onChange={(e) => { updateSafe("cap", parseFloat(e.target.value) || 0); }}
                     />
+                    {validationErrors["safe-cap"] && <p className="text-[10px] text-red-500 mt-1">{validationErrors["safe-cap"]}</p>}
                   </div>
                   <div>
                     <div className="flex items-center gap-1.5 mb-1">
@@ -498,11 +535,10 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                       type="number"
                       value={state.safe.discount}
                       disabled={readOnly}
-                      onChange={(e) => {
-                        const value = parseFloat(e.target.value) || 0;
-                        updateSafe("discount", value);
-                      }}
+                      className={validationErrors["safe-discount"] ? "border-red-400" : ""}
+                      onChange={(e) => { updateSafe("discount", parseFloat(e.target.value) || 0); }}
                     />
+                    {validationErrors["safe-discount"] && <p className="text-[10px] text-red-500 mt-1">{validationErrors["safe-discount"]}</p>}
                   </div>
                 </div>
               </div>
@@ -539,7 +575,10 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                             </Tooltip>
                           </TooltipProvider>
                         </div>
-                        <Input type="number" value={r.preMoney} disabled={readOnly} onChange={(e) => updateRound(k, { preMoney: parseFloat(e.target.value) || 0 })} />
+                        <Input type="number" value={r.preMoney} disabled={readOnly}
+                          className={validationErrors[`${k}-pre`] ? "border-red-400" : ""}
+                          onChange={(e) => updateRound(k, { preMoney: parseFloat(e.target.value) || 0 })} />
+                        {validationErrors[`${k}-pre`] && <p className="text-[10px] text-red-500 mt-1">{validationErrors[`${k}-pre`]}</p>}
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5 mb-1">
@@ -556,7 +595,10 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                             </Tooltip>
                           </TooltipProvider>
                         </div>
-                        <Input type="number" value={r.raise} disabled={readOnly} onChange={(e) => updateRound(k, { raise: parseFloat(e.target.value) || 0 })} />
+                        <Input type="number" value={r.raise} disabled={readOnly}
+                          className={validationErrors[`${k}-raise`] ? "border-red-400" : ""}
+                          onChange={(e) => updateRound(k, { raise: parseFloat(e.target.value) || 0 })} />
+                        {validationErrors[`${k}-raise`] && <p className="text-[10px] text-red-500 mt-1">{validationErrors[`${k}-raise`]}</p>}
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5 mb-1">
@@ -573,7 +615,10 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                             </Tooltip>
                           </TooltipProvider>
                         </div>
-                        <Input type="number" value={r.esop} disabled={readOnly} onChange={(e) => updateRound(k, { esop: parseFloat(e.target.value) || 0 })} />
+                        <Input type="number" value={r.esop} disabled={readOnly}
+                          className={validationErrors[`${k}-esop`] ? "border-red-400" : ""}
+                          onChange={(e) => updateRound(k, { esop: parseFloat(e.target.value) || 0 })} />
+                        {validationErrors[`${k}-esop`] && <p className="text-[10px] text-red-500 mt-1">{validationErrors[`${k}-esop`]}</p>}
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5 mb-1">
