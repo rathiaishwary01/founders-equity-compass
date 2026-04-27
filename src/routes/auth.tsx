@@ -40,7 +40,8 @@ function AuthPage() {
       return;
     }
     if (mode === "signup") {
-      toast.success("Check your email to confirm your account.");
+      toast.success("Account created!");
+      navigate({ to: "/scenarios" });
     } else {
       navigate({ to: "/scenarios" });
     }
