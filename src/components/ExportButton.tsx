@@ -10,7 +10,7 @@ import {
   fmtVal,
   latestSnap,
 } from "@/lib/equity/calc";
-import { INITIAL_HOLDERS, type SimulatorState, ROUND_KEYS, ROUND_LABELS } from "@/lib/equity/types";
+import { type SimulatorState, ROUND_KEYS, ROUND_LABELS } from "@/lib/equity/types";
 
 interface Props {
   state: SimulatorState;
@@ -60,7 +60,14 @@ export function ExportButton({ state, scenarioName }: Props) {
 
       // Exit payouts
       const allPayouts = calcPayouts(latest, state.exitValue, state.usePref);
-      const fPayouts = founderPayouts(latest, state.exitValue, state.usePref);
+      const fPayouts = founderPayouts(
+        latest,
+        state.exitValue,
+        state.usePref,
+        state.vestingEnabled ?? false,
+        state.vesting ?? {},
+        state.accelerationAtExit ?? true,
+      );
       const founderTotal = fPayouts.reduce((s, f) => s + f.payout, 0);
       const vcTotal = latest.holders.filter((h) => h.type === "vc").reduce((s, h) => s + (allPayouts[h.name] || 0), 0);
       const rData = (latest.roundData || []).filter((r) => r.type === "vc");

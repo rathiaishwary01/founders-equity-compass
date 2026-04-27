@@ -19,15 +19,18 @@ import {
   computeSnaps,
   calcPayouts,
   founderPayouts,
+  vestedFraction,
   fmtM,
   fmtVal,
   latestSnap,
 } from "@/lib/equity/calc";
 import {
   DEFAULT_STATE,
+  DEFAULT_VESTING,
   HOLDER_COLORS,
   INDIA_DEFAULT_ROUNDS,
   INITIAL_HOLDERS,
+  ROUND_BENCHMARK_NOTES,
   ROUND_BENCHMARKS,
   ROUND_ICONS,
   ROUND_KEYS,
@@ -37,6 +40,7 @@ import {
   type RoundConfig,
   type RoundKey,
   type SimulatorState,
+  type VestingConfig,
 } from "@/lib/equity/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
@@ -49,6 +53,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
+
+const EXTRA_FOUNDER_COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316", "#84cc16", "#06b6d4"];
 
 interface Props {
   state: SimulatorState;
@@ -88,6 +94,43 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
     onChange({ ...state, safe: { ...state.safe, [field]: value } });
   };
 
+  const updateVesting = (name: string, patch: Partial<VestingConfig>) => {
+    if (readOnly) return;
+    const current = state.vesting?.[name] ?? DEFAULT_VESTING;
+    onChange({ ...state, vesting: { ...state.vesting, [name]: { ...current, ...patch } } });
+  };
+
+  // Pre-funding cap table (custom or default)
+  const founders = state.founders ?? INITIAL_HOLDERS;
+  const founderOnlyHolders = founders.filter((h) => h.type === "founder");
+
+  const updateFounderField = (idx: number, patch: Partial<{ name: string; role: string; pct: number }>) => {
+    if (readOnly) return;
+    const next = founders.map((h, i) => (i === idx ? { ...h, ...patch } : h));
+    onChange({ ...state, founders: next });
+  };
+
+  const addFounder = () => {
+    if (readOnly) return;
+    const taken = founders.reduce((s, h) => s + h.pct, 0);
+    const remaining = Math.max(0, parseFloat((100 - taken).toFixed(1)));
+    // Insert before ESOP/Advisory rows
+    const insertAt = founders.findIndex((h) => h.type === "esop");
+    const newHolder = { name: "New Founder", role: "Co-founder", pct: remaining, type: "founder" as const };
+    const next = insertAt >= 0
+      ? [...founders.slice(0, insertAt), newHolder, ...founders.slice(insertAt)]
+      : [...founders, newHolder];
+    onChange({ ...state, founders: next });
+  };
+
+  const removeFounder = (idx: number) => {
+    if (readOnly) return;
+    onChange({ ...state, founders: founders.filter((_, i) => i !== idx) });
+  };
+
+  const founderSum = founders.reduce((s, h) => s + h.pct, 0);
+  const founderSumOk = Math.abs(founderSum - 100) < 0.11;
+
   const founderPct = latest.holders.filter((h) => h.type === "founder").reduce((s, h) => s + h.pct, 0);
   const vcPct = latest.holders.filter((h) => h.type === "vc").reduce((s, h) => s + h.pct, 0);
 
@@ -98,7 +141,14 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
   const vSeatPct = Math.round((latest.vcSeats / totalSeats) * 100);
   const iSeatPct = 100 - fSeatPct - vSeatPct;
 
-  const fPayouts = founderPayouts(latest, state.exitValue, state.usePref);
+  const fPayouts = founderPayouts(
+    latest,
+    state.exitValue,
+    state.usePref,
+    state.vestingEnabled ?? false,
+    state.vesting ?? {},
+    state.accelerationAtExit ?? true,
+  );
   const founderTotal = fPayouts.reduce((s, f) => s + f.payout, 0);
   const totalPref = (latest.roundData || []).filter((r) => r.type === "vc").reduce((s, r) => s + r.investment * r.prefMult, 0);
   const totalInvested = (latest.roundData || []).filter((r) => r.type === "vc").reduce((s, r) => s + r.investment, 0);
@@ -383,7 +433,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
   // Line chart data with dynamic Y max (BUG FIX 2)
   const lineData = snapKeys.map((k) => {
     const row: Record<string, number | string> = { round: snaps[k].label };
-    INITIAL_HOLDERS.filter((h) => h.type === "founder").forEach((f) => {
+    founderOnlyHolders.forEach((f) => {
       const h = snaps[k].holders.find((x) => x.name === f.name);
       row[f.name] = h ? Number(h.pct.toFixed(2)) : 0;
     });
@@ -542,6 +592,107 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                 {[1, 2, 3, 4].map((n) => <SelectItem key={n} value={String(n)}>{n} seat{n > 1 ? "s" : ""}</SelectItem>)}
               </SelectContent>
             </Select>
+          </Card>
+
+          {/* Pre-funding Cap Table Editor */}
+          <Card className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-bold text-sm">👥 Pre-funding Cap Table</div>
+              <div className={cn(
+                "text-xs font-bold px-2 py-0.5 rounded-full",
+                founderSumOk ? "bg-emerald-500/15 text-emerald-700" : "bg-red-500/15 text-red-600",
+              )}>
+                {founderSum.toFixed(1)}% {founderSumOk ? "✓" : "≠ 100%"}
+              </div>
+            </div>
+            <table className="w-full text-xs mb-3">
+              <thead>
+                <tr className="text-[10px] uppercase text-muted-foreground border-b">
+                  <th className="text-left py-1.5 pr-2">Name</th>
+                  <th className="text-left py-1.5 pr-2">Role</th>
+                  <th className="text-right py-1.5 pr-2 w-20">Equity %</th>
+                  {!readOnly && <th className="w-6" />}
+                </tr>
+              </thead>
+              <tbody>
+                {founders.map((h, idx) => (
+                  <tr key={idx} className="border-b last:border-0">
+                    <td className="py-1 pr-2">
+                      {h.type === "esop" || h.type === "advisory" ? (
+                        <span className="font-semibold text-muted-foreground">{h.name}</span>
+                      ) : (
+                        <Input
+                          value={h.name}
+                          disabled={readOnly}
+                          className="h-7 text-xs px-2"
+                          onChange={(e) => updateFounderField(idx, { name: e.target.value })}
+                        />
+                      )}
+                    </td>
+                    <td className="py-1 pr-2">
+                      {h.type === "esop" || h.type === "advisory" ? (
+                        <span className="text-muted-foreground">{h.role}</span>
+                      ) : (
+                        <Input
+                          value={h.role}
+                          disabled={readOnly}
+                          className="h-7 text-xs px-2"
+                          onChange={(e) => updateFounderField(idx, { role: e.target.value })}
+                        />
+                      )}
+                    </td>
+                    <td className="py-1 pr-2 w-20">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.1}
+                        value={h.pct}
+                        disabled={readOnly}
+                        className="h-7 text-xs px-2 text-right"
+                        onChange={(e) => updateFounderField(idx, { pct: parseFloat(e.target.value) || 0 })}
+                      />
+                    </td>
+                    {!readOnly && (
+                      <td className="py-1 text-center">
+                        {h.type === "founder" && (
+                          <button
+                            onClick={() => removeFounder(idx)}
+                            className="w-5 h-5 rounded-full text-muted-foreground hover:text-red-500 hover:bg-red-50 flex items-center justify-center text-sm font-bold transition-colors"
+                            title="Remove founder"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!readOnly && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={addFounder}
+                  className="rounded-lg border border-dashed border-primary/40 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors"
+                >
+                  + Add Founder
+                </button>
+                {state.founders && (
+                  <button
+                    onClick={() => onChange({ ...state, founders: undefined })}
+                    className="text-xs text-muted-foreground hover:text-foreground underline"
+                  >
+                    Reset to defaults
+                  </button>
+                )}
+              </div>
+            )}
+            {!founderSumOk && (
+              <p className="text-[10px] text-red-500 mt-2">
+                Equity must sum to exactly 100%. Current total: {founderSum.toFixed(1)}%.
+              </p>
+            )}
           </Card>
 
           {/* SECTION A — Insight Engine */}
@@ -719,11 +870,117 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             )}
           </Card>}
 
+          {/* Vesting Schedule Config */}
+          {expertMode && (
+            <Card className="p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-xl">⏱️</span>
+                <div className="font-bold flex-1">Founder Vesting Schedules</div>
+                <Switch
+                  checked={state.vestingEnabled ?? false}
+                  disabled={readOnly}
+                  onCheckedChange={(v) => onChange({ ...state, vestingEnabled: v })}
+                />
+              </div>
+
+              {(state.vestingEnabled) && (
+                <div className="space-y-4">
+                  <div className="text-xs bg-muted rounded-md px-3 py-2 text-muted-foreground">
+                    Standard 4-year cliff-then-linear vesting. Elapsed months tracks how much has already vested.
+                    Single-trigger acceleration fully vests founders at acquisition.
+                  </div>
+
+                  {/* Acceleration toggle */}
+                  <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                    <div>
+                      <div className="text-xs font-semibold">Single-trigger acceleration at exit</div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">
+                        All unvested equity vests immediately on acquisition. Market standard — always negotiate for it.
+                      </div>
+                    </div>
+                    <Switch
+                      checked={state.accelerationAtExit ?? true}
+                      disabled={readOnly}
+                      onCheckedChange={(v) => onChange({ ...state, accelerationAtExit: v })}
+                    />
+                  </div>
+
+                  {/* Per-founder vesting rows */}
+                  {founderOnlyHolders.map((f) => {
+                    const v = state.vesting?.[f.name] ?? DEFAULT_VESTING;
+                    const vFrac = v.elapsedMonths < v.cliffMonths ? 0 : Math.min(1, v.elapsedMonths / v.vestMonths);
+                    return (
+                      <div key={f.name} className="rounded-lg border border-border p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-xs font-bold">{f.name}</div>
+                            <div className="text-[10px] text-muted-foreground">{f.role}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-bold" style={{ color: HOLDER_COLORS[f.name] }}>
+                              {(vFrac * 100).toFixed(0)}% vested
+                            </div>
+                            {v.elapsedMonths < v.cliffMonths && (
+                              <div className="text-[10px] text-muted-foreground">Cliff not reached</div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <Label className="text-[10px] uppercase text-muted-foreground">Cliff (mo.)</Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={24}
+                              value={v.cliffMonths}
+                              disabled={readOnly}
+                              onChange={(e) => updateVesting(f.name, { cliffMonths: parseInt(e.target.value) || 0 })}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-[10px] uppercase text-muted-foreground">Total (mo.)</Label>
+                            <Input
+                              type="number"
+                              min={12}
+                              max={72}
+                              value={v.vestMonths}
+                              disabled={readOnly}
+                              onChange={(e) => updateVesting(f.name, { vestMonths: parseInt(e.target.value) || 48 })}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-[10px] uppercase text-muted-foreground">Elapsed (mo.)</Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={v.vestMonths}
+                              value={v.elapsedMonths}
+                              disabled={readOnly}
+                              onChange={(e) => updateVesting(f.name, { elapsedMonths: parseInt(e.target.value) || 0 })}
+                            />
+                          </div>
+                        </div>
+                        {/* vesting progress bar */}
+                        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-primary transition-all"
+                            style={{ width: (vFrac * 100) + "%" }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+          )}
+
           {ROUND_KEYS.map((k) => {
             const r = state.rounds[k];
             if (!r) return null;
             const dil = r.preMoney && r.raise ? (r.raise / (r.preMoney + r.raise)) * 100 : 0;
             const bench = (isUS ? US_ROUND_BENCHMARKS : ROUND_BENCHMARKS)[k];
+            const benchNote = ROUND_BENCHMARK_NOTES[isUS ? "us" : "india"][k];
             const dilCls = dil === 0 ? "text-muted-foreground" : dil <= bench.hi ? "text-success" : dil <= bench.hi + 5 ? "text-warning" : "text-danger";
             const isPreSeed = k === "preseed";
             return (
@@ -896,11 +1153,62 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                           </SelectContent>
                         </Select>
                       </div>}
+                      {expertMode && !isPreSeed && <div>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Label className="text-[10px] uppercase text-muted-foreground">Anti-dilution</Label>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">?</button>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-[240px] text-xs">
+                                <p className="font-bold text-primary mb-1">Anti-dilution Protection</p>
+                                <p className="mb-1">Protects this VC if a future round is raised at a lower valuation (down round).</p>
+                                <p><span className="font-bold">BBWA</span> — Broad-Based Weighted Average. Market standard. Adjusts the VC's conversion price using a weighted average of old and new share prices. Founders lose more in a down round, but less than full ratchet.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        <Select
+                          value={r.antiDilution ?? "none"}
+                          disabled={readOnly}
+                          onValueChange={(v) => updateRound(k, { antiDilution: v as "none" | "bbwa" })}
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">None</SelectItem>
+                            <SelectItem value="bbwa">BBWA (Standard)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>}
                     </div>
-                    <div className="flex items-center justify-between text-xs bg-muted rounded-md px-3 py-2">
-                      <span className="text-muted-foreground">Dilution this round</span>
-                      <span className={cn("font-bold", dilCls)}>{dil.toFixed(1)}% <span className="text-muted-foreground font-normal">(target {bench.lo}–{bench.hi}%)</span></span>
+                    <div className="rounded-md bg-muted px-3 py-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Dilution this round</span>
+                        <span className={cn("font-bold", dilCls)}>
+                          {dil.toFixed(1)}%{" "}
+                          <span className="text-muted-foreground font-normal">({isUS ? "US" : "India"} norm: {bench.lo}–{bench.hi}%)</span>
+                        </span>
+                      </div>
+                      {dil > 0 && <div className="mt-1 text-[10px] text-muted-foreground">{benchNote}</div>}
                     </div>
+                    {/* Down-round warning — shown when this round's pre < previous post */}
+                    {(() => {
+                      const snap = snaps[k];
+                      if (!snap?.isDownRound) return null;
+                      const adRounds = ROUND_KEYS.filter((pk) => {
+                        const pc = state.rounds[pk];
+                        return pc?.enabled && pc.antiDilution === "bbwa" && pk !== k;
+                      });
+                      return (
+                        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[10px] text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
+                          <span className="font-bold">Down round — {snap.valDrop}% below previous post-money.</span>
+                          {adRounds.length > 0
+                            ? ` BBWA anti-dilution triggered for ${adRounds.map((pk) => ROUND_LABELS[pk]).join(", ")} investors — founders diluted further.`
+                            : " No anti-dilution protection active for prior investors."}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </Card>
@@ -994,8 +1302,8 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   <YAxis tick={{ fontSize: 10 }} domain={[0, lineMax]} tickFormatter={(v) => v + "%"} />
                   <RechartsTooltip formatter={(v: number) => v.toFixed(2) + "%"} />
                   <Legend wrapperStyle={{ fontSize: "10px" }} />
-                  {INITIAL_HOLDERS.filter((h) => h.type === "founder").map((f) => (
-                    <Line key={f.name} type="monotone" dataKey={f.name} stroke={HOLDER_COLORS[f.name]} strokeWidth={2} dot={{ r: 3 }} />
+                  {founderOnlyHolders.map((f, i) => (
+                    <Line key={f.name} type="monotone" dataKey={f.name} stroke={HOLDER_COLORS[f.name] || EXTRA_FOUNDER_COLORS[i % EXTRA_FOUNDER_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} />
                   ))}
                   <Line type="monotone" dataKey="Total VC" stroke="#e74c3c" strokeWidth={2} strokeDasharray="5 3" dot={{ r: 3 }} />
                 </LineChart>
@@ -1543,12 +1851,27 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
               <div className="text-[10px] uppercase text-muted-foreground font-semibold mb-2">Individual Payouts</div>
               <table className="w-full text-xs">
                 <tbody>
-                  {fPayouts.map((f) => (
-                    <tr key={f.name} className="border-b last:border-0">
-                      <td className="py-1.5"><strong>{f.name}</strong> <span className="text-muted-foreground">({f.role})</span></td>
-                      <td className="py-1.5 text-right font-bold" style={{ color: HOLDER_COLORS[f.name] }}>{fmtM(f.payout)}</td>
-                    </tr>
-                  ))}
+                  {fPayouts.map((f) => {
+                    const vestingEnabled = state.vestingEnabled ?? false;
+                    const accelerated = state.accelerationAtExit ?? true;
+                    const showVesting = vestingEnabled;
+                    const vestedPct = Math.round(f.vestedFraction * 100);
+                    return (
+                      <tr key={f.name} className="border-b last:border-0">
+                        <td className="py-1.5">
+                          <strong>{f.name}</strong>{" "}
+                          <span className="text-muted-foreground">({f.role})</span>
+                          {showVesting && (
+                            <span className="ml-2 inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold"
+                              style={{ backgroundColor: accelerated ? "#dcfce7" : vestedPct < 50 ? "#fee2e2" : "#fef9c3", color: accelerated ? "#16a34a" : vestedPct < 50 ? "#dc2626" : "#92400e" }}>
+                              {accelerated ? "⚡ Accelerated" : `${vestedPct}% vested`}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-1.5 text-right font-bold" style={{ color: HOLDER_COLORS[f.name] }}>{fmtM(f.payout)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </Card>

@@ -35,10 +35,14 @@ function SharedView() {
         }
         setName(data.name);
         const loaded = data.state as Partial<SimulatorState>;
+        const mergedRounds = { ...DEFAULT_STATE.rounds };
+        for (const k of Object.keys(DEFAULT_STATE.rounds) as (keyof typeof DEFAULT_STATE.rounds)[]) {
+          mergedRounds[k] = { ...DEFAULT_STATE.rounds[k], ...(loaded.rounds?.[k] ?? {}) };
+        }
         setState({
           ...DEFAULT_STATE,
           ...loaded,
-          rounds: { ...DEFAULT_STATE.rounds, ...(loaded.rounds ?? {}) },
+          rounds: mergedRounds,
           safe: { ...DEFAULT_STATE.safe, ...(loaded.safe ?? {}) },
         } as SimulatorState);
       });
