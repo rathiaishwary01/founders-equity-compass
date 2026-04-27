@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Simulator } from "@/components/Simulator";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DEFAULT_STATE, type SimulatorState } from "@/lib/equity/types";
@@ -110,7 +111,9 @@ function ScenarioEditor() {
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-6 py-6">
-        <Simulator state={state} onChange={setState} />
+        <ErrorBoundary>
+          <Simulator state={state} onChange={setState} />
+        </ErrorBoundary>
       </main>
     </div>
   );

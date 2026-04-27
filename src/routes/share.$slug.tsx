@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Simulator } from "@/components/Simulator";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DEFAULT_STATE, type SimulatorState } from "@/lib/equity/types";
 import { Badge } from "@/components/ui/badge";
 
@@ -72,7 +73,9 @@ function SharedView() {
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-6 py-6">
-        <Simulator state={state} onChange={() => {}} readOnly />
+        <ErrorBoundary>
+          <Simulator state={state} onChange={() => {}} readOnly />
+        </ErrorBoundary>
       </main>
     </div>
   );
