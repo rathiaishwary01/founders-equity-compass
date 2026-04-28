@@ -31,18 +31,18 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "CapStack — Equity & VC Negotiation Simulator for Indian Founders" },
+      { title: "EquiCompass — Equity & VC Negotiation Simulator for Indian Founders" },
       { name: "description", content: "Model your cap table, simulate dilution across funding rounds, and walk into VC negotiations prepared. Built for Indian founders." },
-      { name: "author", content: "CapStack" },
+      { name: "author", content: "EquiCompass" },
       { name: "keywords", content: "equity dilution, cap table, VC negotiation, startup funding, SAFE, liquidation preference, Indian startups, term sheet" },
       // Open Graph — controls WhatsApp, LinkedIn, Slack previews
-      { property: "og:title", content: "CapStack — Equity & VC Negotiation Simulator" },
+      { property: "og:title", content: "EquiCompass — Equity & VC Negotiation Simulator" },
       { property: "og:description", content: "Model dilution, simulate exits, and decode VC term sheets before you sign. Free for Indian founders." },
       { property: "og:type", content: "website" },
-      { property: "og:site_name", content: "CapStack" },
+      { property: "og:site_name", content: "EquiCompass" },
       // Twitter / X
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "CapStack — Equity & VC Negotiation Simulator" },
+      { name: "twitter:title", content: "EquiCompass — Equity & VC Negotiation Simulator" },
       { name: "twitter:description", content: "Model dilution, simulate exits, and decode VC term sheets before you sign. Free for Indian founders." },
     ],
     links: [

@@ -1,16 +1,16 @@
-# CapStack — Founder Equity Simulator
+# EquiCompass — Founder Equity Simulator
 
 > Model your funding journey before you sign anything.
 
-CapStack is an open-source equity dilution simulator built for founders. It lets you model funding rounds, liquidation preferences, vesting schedules, anti-dilution clauses, and exit waterfalls — and surfaces plain-English negotiation guidance at every step.
+EquiCompass is an open-source equity dilution simulator built for founders. It lets you model funding rounds, liquidation preferences, vesting schedules, anti-dilution clauses, and exit waterfalls — and surfaces plain-English negotiation guidance at every step.
 
 <!-- screenshot -->
 
 ---
 
-## Why CapStack
+## Why EquiCompass
 
-Most founders see their cap table for the first time in a VC's term sheet. By then, the leverage is gone. CapStack lets you run the numbers before the meeting: model what a 20% Seed + 25% Series A actually does to your ownership, what a 2× participating preferred costs you at a $50M exit, and which clauses your lawyer should fight for.
+Most founders see their cap table for the first time in a VC's term sheet. By then, the leverage is gone. EquiCompass lets you run the numbers before the meeting: model what a 20% Seed + 25% Series A actually does to your ownership, what a 2× participating preferred costs you at a $50M exit, and which clauses your lawyer should fight for.
 
 ---
 
@@ -44,7 +44,7 @@ Most founders see their cap table for the first time in a VC's term sheet. By th
 ## Getting Started
 
 ```bash
-git clone https://github.com/rathiaishwary01/founders-equity-compass.git
+git clone https://github.com/EquiCompass/founders-equity-compass.git
 cd founders-equity-compass
 npm install
 cp .env.example .env   # fill in your Supabase credentials (optional)
@@ -103,22 +103,4 @@ All config files live at the repo root — most tools require them there.
 
 | File | Purpose |
 |---|---|
-| `vite.config.ts` | Vite build config. Wires up TanStack Start, React, Tailwind CSS, `vite-tsconfig-paths`, and the Cloudflare adapter (build-only). React and query packages are deduplicated to avoid multiple-instance issues. |
-| `tsconfig.json` | TypeScript config — strict mode, `@/*` path alias, bundler module resolution. |
-| `eslint.config.js` | ESLint with TypeScript, React Hooks, and Prettier rules. |
-| `.prettierrc` | Prettier: 100-char width, double quotes, trailing commas. |
-| `wrangler.jsonc` | Cloudflare Workers/Pages deploy config — app name and compatibility flags. |
-| `components.json` | shadcn/ui config — component style, Tailwind settings, import aliases. |
-| `bunfig.toml` | Bun package manager config (text lockfile disabled). |
-
----
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md).
-
----
-
-## License
-
-[MIT](LICENSE) © 2025 CapStack Contributors
+| `vite.con

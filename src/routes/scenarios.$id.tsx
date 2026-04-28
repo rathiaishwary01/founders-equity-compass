@@ -11,7 +11,7 @@ import { DEFAULT_STATE, type SimulatorState } from "@/lib/equity/types";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/scenarios/$id")({
-  head: () => ({ meta: [{ title: "Scenario — CapStack" }] }),
+  head: () => ({ meta: [{ title: "Scenario — EquiCompass" }] }),
   component: ScenarioEditor,
 });
 

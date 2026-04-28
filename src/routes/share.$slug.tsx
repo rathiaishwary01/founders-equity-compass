@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 export const Route = createFileRoute("/share/$slug")({
   head: () => ({
     meta: [
-      { title: "Shared scenario — CapStack" },
+      { title: "Shared scenario — EquiCompass" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -71,7 +71,7 @@ function SharedView() {
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
           <Link to="/" className="font-bold text-lg text-foreground">
-            CapStack
+            EquiCompass
           </Link>
           <div className="flex items-center gap-2">
             <h1 className="font-medium text-foreground">{name}</h1>

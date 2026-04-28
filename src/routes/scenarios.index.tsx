@@ -8,7 +8,7 @@ import { DEFAULT_STATE } from "@/lib/equity/types";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/scenarios/")({
-  head: () => ({ meta: [{ title: "Your scenarios — CapStack" }] }),
+  head: () => ({ meta: [{ title: "Your scenarios — EquiCompass" }] }),
   component: ScenariosList,
 });
 
@@ -75,7 +75,7 @@ function ScenariosList() {
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Link to="/scenarios" className="font-bold text-lg text-foreground">
-            CapStack
+            EquiCompass
           </Link>
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground">{user.email}</span>

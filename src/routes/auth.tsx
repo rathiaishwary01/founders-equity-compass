@@ -10,8 +10,8 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — CapStack" },
-      { name: "description", content: "Sign in or create your CapStack account." },
+      { title: "Sign in — EquiCompass" },
+      { name: "description", content: "Sign in or create your EquiCompass account." },
     ],
   }),
   component: AuthPage,

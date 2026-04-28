@@ -3294,7 +3294,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             <div className="p-5 space-y-4">
               {(() => {
                 const lines: string[] = [];
-                lines.push(`CapStack — ${new Date().toLocaleDateString()} | ${isUS ? "United States" : "India"}`);
+                lines.push(`EquiCompass — ${new Date().toLocaleDateString()} | ${isUS ? "United States" : "India"}`);
                 lines.push("");
                 lines.push("PRE-FUNDING CAP TABLE");
                 founders.forEach((h) => lines.push(`  ${h.name} (${h.role}): ${h.pct.toFixed(1)}%`));

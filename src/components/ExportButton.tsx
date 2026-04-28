@@ -126,7 +126,7 @@ export function ExportButton({ state, scenarioName }: Props) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${scenarioName.replace(/\s+/g, "-").toLowerCase()}-capstack.pdf`;
+      a.download = `${scenarioName.replace(/\s+/g, "-").toLowerCase()}-equicompass.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {

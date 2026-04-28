@@ -137,12 +137,12 @@ function SectionHeading({ label }: { label: string }) {
 // ── Document ─────────────────────────────────────────────────────────────────
 export function PdfReport({ data }: { data: PdfData }) {
   return (
-    <Document title={data.scenarioName} author="CapStack" creator="CapStack">
+    <Document title={data.scenarioName} author="EquiCompass" creator="EquiCompass">
       <Page size="A4" style={S.page}>
 
         {/* ── Cover block ── */}
         <View style={S.coverBg}>
-          <Text style={S.coverTitle}>CapStack</Text>
+          <Text style={S.coverTitle}>EquiCompass</Text>
           <Text style={S.coverSub}>Equity & VC Negotiation Simulator</Text>
           <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: "#a5b4fc", marginBottom: 4 }}>
             {data.scenarioName}
@@ -292,7 +292,7 @@ export function PdfReport({ data }: { data: PdfData }) {
 
         {/* ── Footer ── */}
         <View style={S.footer} fixed>
-          <Text style={S.footerText}>CapStack · {data.scenarioName}</Text>
+          <Text style={S.footerText}>EquiCompass · {data.scenarioName}</Text>
           <Text style={S.footerText}>For negotiation planning only — not legal or financial advice</Text>
           <Text style={S.footerText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
         </View>

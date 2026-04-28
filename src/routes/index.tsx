@@ -16,13 +16,13 @@ import {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "CapStack — Know what you give away before you sign" },
+      { title: "EquiCompass — Know what you give away before you sign" },
       {
         name: "description",
         content:
           "Equity dilution simulator for Indian and US founders. Model VC rounds, SAFEs, board seats and liquidation preferences in minutes.",
       },
-      { property: "og:title", content: "CapStack — Equity Dilution Simulator" },
+      { property: "og:title", content: "EquiCompass — Equity Dilution Simulator" },
       {
         property: "og:description",
         content:
@@ -53,7 +53,7 @@ function Landing() {
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
               C
             </div>
-            <span className="font-bold text-lg text-foreground">CapStack</span>
+            <span className="font-bold text-lg text-foreground">EquiCompass</span>
           </div>
           <div className="flex gap-2">
             <Link to="/auth">
@@ -142,7 +142,7 @@ function Landing() {
           <Card className="border-primary/30">
             <CardContent className="p-8">
               <h3 className="text-xl font-semibold text-foreground mb-6">
-                What CapStack shows you
+                What EquiCompass shows you
               </h3>
               <ul className="space-y-4">
                 {[
@@ -218,7 +218,7 @@ function Landing() {
           <div className="mt-8">
             <Link to="/auth">
               <Button size="lg" variant="secondary" className="gap-2">
-                Try CapStack free <ArrowRight className="h-4 w-4" />
+                Try EquiCompass free <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
           </div>
@@ -233,7 +233,7 @@ function Landing() {
               <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold text-sm">
                 C
               </div>
-              <span className="font-semibold text-foreground">CapStack</span>
+              <span className="font-semibold text-foreground">EquiCompass</span>
             </div>
             <p className="text-xs text-muted-foreground max-w-md">
               For negotiation planning only — not legal advice.
