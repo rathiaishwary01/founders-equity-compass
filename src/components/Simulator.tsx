@@ -2417,28 +2417,45 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                 { key: "founder",    label: "Founder Protections",    icon: "🛡️" },
                 { key: "governance", label: "Governance & Documents", icon: "📋" },
               ];
+              const defaultOpenSections = vetoSections
+                .filter(({ key: gk }) => vetoItems.filter((it) => it.group === gk && it.active).length > 0)
+                .map(({ key: gk }) => gk);
               return (
-                <div className="mt-4 space-y-5">
-                  {vetoSections.map(({ key: gk, label, icon }) => {
-                    const groupItems = vetoItems.filter((it) => it.group === gk);
-                    if (groupItems.length === 0) return null;
-                    const activeCount = groupItems.filter((it) => it.active).length;
-                    return (
-                      <div key={gk}>
-                        <div className="flex items-center gap-2 mb-2">
-                          <span>{icon}</span>
-                          <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
-                          {activeCount > 0 && (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">{activeCount} active</span>
-                          )}
-                          <div className="flex-1 h-px bg-border" />
-                        </div>
-                        <Accordion type="single" collapsible className="w-full">
-                          {groupItems.map(renderVetoItem)}
-                        </Accordion>
-                      </div>
-                    );
-                  })}
+                <div className="mt-4">
+                  <Accordion
+                    type="multiple"
+                    defaultValue={defaultOpenSections}
+                    className="w-full space-y-2"
+                  >
+                    {vetoSections.map(({ key: gk, label, icon }) => {
+                      const groupItems = vetoItems.filter((it) => it.group === gk);
+                      if (groupItems.length === 0) return null;
+                      const activeCount = groupItems.filter((it) => it.active).length;
+                      return (
+                        <AccordionItem
+                          key={gk}
+                          value={gk}
+                          className="border rounded-xl px-3 py-0 overflow-hidden"
+                        >
+                          <AccordionTrigger className="hover:no-underline py-3">
+                            <div className="flex items-center gap-2 w-full pr-2">
+                              <span className="text-sm">{icon}</span>
+                              <span className="text-xs font-bold uppercase tracking-wide">{label}</span>
+                              {activeCount > 0 && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">{activeCount} active</span>
+                              )}
+                              <span className="ml-auto text-[10px] text-muted-foreground font-normal mr-1">{groupItems.length} items</span>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="pb-3 pt-1">
+                            <Accordion type="single" collapsible className="w-full">
+                              {groupItems.map(renderVetoItem)}
+                            </Accordion>
+                          </AccordionContent>
+                        </AccordionItem>
+                      );
+                    })}
+                  </Accordion>
                 </div>
               );
             })()}
