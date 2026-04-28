@@ -487,8 +487,30 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
       }
     }
 
+    // ── Founder Voting Agreement ─────────────────────────────────────────────
+    if (anyRoundsEnabled) {
+      const latestFounderHolders = latest.holders.filter((h) => h.type === "founder");
+      const anyFounderBelowFloor = latestFounderHolders.some((h) => h.pct < 5);
+      recs.push({
+        priority: anyFounderBelowFloor ? "critical" : "high",
+        timing: "now",
+        action: anyFounderBelowFloor
+          ? "Sign a Founder Voting Agreement immediately — at least one founder is below the 5% individual nomination floor"
+          : "Sign a Founder Voting Agreement before your first institutional round",
+        why: anyFounderBelowFloor
+          ? `One or more founders now hold less than 5% individually. VCs can challenge their right to self-nominate as directors. Without a Voting Agreement, those founders can be removed from the board by a shareholder vote they can't win alone.`
+          : `With ${founderOnlyHolders.length} founders, equity dilutes unevenly round by round. Founders with smaller initial stakes hit the 5% individual nomination floor earlier than others. A Voting Agreement locks in 2 founder board seats regardless of who gets diluted first — costs nothing to negotiate today, nearly impossible to add after Series A.`,
+        nextStep: isUS
+          ? "Have your lawyer draft a Voting Agreement this week (3–5 pages): all founders pledge to vote their shares to elect each other as directors. Must cover: (1) all current and future share classes, (2) survives any ROFR transfers, (3) terminates only on mutual written consent or qualified IPO. Sign before any term sheet is received."
+          : "Have your lawyer prepare a Voting Agreement side letter this week: all founders agree to vote their shares to elect each other as directors. Clauses: (1) applies to all current and future equity classes, (2) survives secondary transfers between founders, (3) new co-founders may be added by unanimous consent. Sign before any VC term sheet.",
+        leverage: isUS
+          ? "VCs will try to block or dilute this clause at Series A — sign it now before any term sheet is in play. Pre-Series A founders have full leverage to sign among themselves."
+          : "Easiest to sign now — after Seed round, VCs will require SHA consent for any new founder-side agreements and may object to bloc-voting clauses.",
+      });
+    }
+
     return recs;
-  }, [isUS, latest, founderSeats, founderPct, anyRoundsEnabled, state.rounds, state.exitValue, state.usePref, enabledRounds, hasParticipatingPreferred, state.safe.enabled]);
+  }, [isUS, latest, founderSeats, founderPct, founderOnlyHolders, anyRoundsEnabled, state.rounds, state.exitValue, state.usePref, enabledRounds, hasParticipatingPreferred, state.safe.enabled]);
 
   // Line chart data with dynamic Y max (BUG FIX 2)
   const lineData = snapKeys.map((k) => {
@@ -1470,6 +1492,93 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             </div>
           </Card>
 
+          {/* ── Board Seat Runway ── */}
+          {(() => {
+            const twoSeatThreshold = isUS ? 20 : 25;
+            const oneSeatThreshold = state.boardRetentionPct ?? (isUS ? 10 : 15);
+            return (
+              <Card className="p-4">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="font-semibold text-sm">🛤️ Board Seat Runway</div>
+                  <div className="text-[10px] text-muted-foreground">≥{twoSeatThreshold}% = 2 seats · ≥{oneSeatThreshold}% = 1 seat · below = 0</div>
+                </div>
+                <p className="text-xs text-muted-foreground mb-4">How many founder director seats you can defend at each stage, based on collective equity vs. your SHA thresholds.</p>
+                <div className="flex items-end gap-4 flex-wrap">
+                  {snapKeys.map((k) => {
+                    const snap = snaps[k];
+                    const fEq = snap.holders.filter((h) => h.type === "founder").reduce((s, h) => s + h.pct, 0);
+                    const regime = fEq >= twoSeatThreshold ? "2" : fEq >= oneSeatThreshold ? "1" : "0";
+                    return (
+                      <div key={k} className="flex flex-col items-center gap-1.5">
+                        <div className={cn(
+                          "w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 text-base font-bold",
+                          regime === "2" ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-700"
+                            : regime === "1" ? "bg-amber-500/10 border-amber-500/50 text-amber-700"
+                            : "bg-red-500/10 border-red-500/50 text-red-700",
+                        )}>
+                          {regime}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground text-center leading-tight w-14">{snap.label}</div>
+                        <div className={cn(
+                          "text-[10px] font-semibold",
+                          regime === "2" ? "text-emerald-600" : regime === "1" ? "text-amber-600" : "text-red-600",
+                        )}>{fEq.toFixed(0)}%</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-4 flex flex-wrap gap-4 text-[10px] text-muted-foreground">
+                  <span><span className="font-bold text-emerald-600">● 2</span> Both founder directors safe</span>
+                  <span><span className="font-bold text-amber-600">● 1</span> One seat at risk — form a bloc</span>
+                  <span><span className="font-bold text-red-600">● 0</span> SHA forces resignation</span>
+                </div>
+              </Card>
+            );
+          })()}
+
+          {/* ── Individual Founder Nomination Eligibility ── */}
+          {founderOnlyHolders.length > 0 && (
+            <Card className="p-4">
+              <div className="font-semibold text-sm mb-1">👤 Individual Nomination Eligibility</div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Each founder can self-nominate as a director only while they personally hold ≥5%. Below that, VCs can challenge the nomination in a shareholder vote — and win.
+                A <span className="font-semibold">Founder Voting Agreement</span> (all founders pledge to vote each other in) fixes this regardless of individual stake size.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b text-[10px] uppercase text-muted-foreground">
+                      <th className="text-left py-1.5 pr-3">Founder</th>
+                      {snapKeys.map((k) => (
+                        <th key={k} className="text-right py-1.5 px-2 whitespace-nowrap">{snaps[k].label}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {founderOnlyHolders.map((founder) => (
+                      <tr key={founder.name} className="border-b last:border-0">
+                        <td className="py-2 pr-3 font-semibold whitespace-nowrap">{founder.name}</td>
+                        {snapKeys.map((k) => {
+                          const h = snaps[k].holders.find((x) => x.name === founder.name);
+                          const pct = h ? h.pct : 0;
+                          const ineligible = pct < 5;
+                          return (
+                            <td key={k} className={cn("py-2 px-2 text-right font-medium", ineligible ? "text-red-600" : "text-emerald-600")}>
+                              {pct.toFixed(1)}%{ineligible && <span className="ml-0.5 text-[9px]">⚠</span>}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-3 text-[10px] text-muted-foreground bg-amber-500/5 border border-amber-500/25 rounded px-2.5 py-2 leading-relaxed">
+                <span className="font-semibold text-amber-700">⚠ Red = below 5% individual floor.</span> Fix before first round: all founders sign a Voting Agreement pledging to vote their shares to elect each other as directors — this keeps 2 seats safe even after heavy individual dilution.
+              </div>
+            </Card>
+          )}
+
           {/* ── Board section ── */}
           <div className="flex items-center gap-2 pt-1">
             <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">🏛️ Board Composition</span>
@@ -1528,6 +1637,24 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   danger ? "bg-danger/10 text-danger" : tied ? "bg-warning/15 text-warning-foreground" : "bg-success/10 text-success",
                 )}>
                   {danger ? `VC-controlled: ${vp}% vs founders ${fp}%` : tied ? `Tied — independent decides` : `Founder-controlled: ${fp}% vs ${vp}%`}
+                </div>
+                {/* Voting bloc strength */}
+                <div className="mt-2 text-[10px] text-muted-foreground flex items-center gap-1.5">
+                  <span>🗳️ Founder voting bloc:</span>
+                  <span className={cn(
+                    "font-semibold",
+                    snapFounderEquityPct > 50 ? "text-emerald-600" : snapFounderEquityPct > 33.33 ? "text-amber-600" : "text-red-600",
+                  )}>{snapFounderEquityPct.toFixed(1)}%</span>
+                  <span>—</span>
+                  <span className={cn(
+                    snapFounderEquityPct > 50 ? "text-emerald-700" : snapFounderEquityPct > 33.33 ? "text-amber-700" : "text-red-700",
+                  )}>
+                    {snapFounderEquityPct > 50
+                      ? "majority: can elect any director in a shareholder vote"
+                      : snapFounderEquityPct > 33.33
+                      ? "minority: can block special resolutions but can't control elections alone"
+                      : "⚠️ below 33% — limited blocking power, VCs can pass most resolutions without you"}
+                  </span>
                 </div>
                 {belowRetention && (
                   <div className="mt-3 p-2.5 rounded-md bg-red-500/8 border border-red-500/25 text-[11px] text-red-700 leading-relaxed">
