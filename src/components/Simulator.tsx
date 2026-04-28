@@ -3340,8 +3340,8 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                 <button
                   id="copy-export-btn"
                   onClick={() => {
-                    const el = document.getElementById("export-pre-content");
-                    const text = el ? el.textContent || "" : "";
+                    const pre = document.querySelector("#export-modal pre");
+                    const text = pre ? pre.textContent || "" : "";
                     navigator.clipboard.writeText(text).then(() => {
                       const btn = document.getElementById("copy-export-btn");
                       if (btn) { btn.textContent = "✅ Copied!"; setTimeout(() => { if(btn) btn.textContent = "📋 Copy"; }, 2000); }
@@ -3355,7 +3355,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   onClick={() => window.print()}
                   className="flex-1 rounded-lg bg-primary text-primary-foreground px-3 py-2.5 text-xs font-semibold hover:opacity-90 transition-opacity"
                 >
-                  🖨️ Print / Save PDF
+                  🖸️ Print / Save PDF
                 </button>
               </div>
               <p className="text-[10px] text-muted-foreground text-center">Print → "Save as PDF" in destination dropdown</p>

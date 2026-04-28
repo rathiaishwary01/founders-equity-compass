@@ -1,8 +1,33 @@
 {
-  "name": "tanstack_start_ts",
-  "private": true,
+  "name": "capstack",
+  "version": "1.0.0",
+  "description": "Open-source equity dilution simulator for founders. Model funding rounds, liquidation preferences, vesting, anti-dilution, and exit waterfalls.",
+  "private": false,
   "sideEffects": false,
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rathiaishwary01/founders-equity-compass.git"
+  },
+  "homepage": "https://github.com/rathiaishwary01/founders-equity-compass#readme",
+  "bugs": {
+    "url": "https://github.com/rathiaishwary01/founders-equity-compass/issues"
+  },
+  "keywords": [
+    "equity",
+    "cap-table",
+    "dilution",
+    "startup",
+    "founder",
+    "vc",
+    "liquidation-preference",
+    "vesting",
+    "anti-dilution",
+    "exit-waterfall",
+    "india",
+    "delaware"
+  ],
+  "license": "MIT",
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
