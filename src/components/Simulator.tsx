@@ -380,7 +380,37 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
       });
     }
 
-    return signals.slice(0, 8);
+    // Co-founder vesting sync check
+    if ((state.vestingEnabled ?? false) && founderOnlyHolders.length >= 2) {
+      const vestSchedules = founderOnlyHolders.map((f) => state.vesting?.[f.name] ?? DEFAULT_VESTING);
+      const cliffs  = vestSchedules.map((v) => v.cliffMonths);
+      const totals  = vestSchedules.map((v) => v.vestMonths);
+      const cliffMismatch = Math.max(...cliffs) - Math.min(...cliffs) > 6;
+      const totalMismatch = Math.max(...totals) - Math.min(...totals) > 12;
+      if (cliffMismatch || totalMismatch) {
+        signals.push({
+          tone: "orange",
+          text: `Co-founder vesting schedules are mismatched${cliffMismatch ? ` — cliff varies by ${Math.max(...cliffs) - Math.min(...cliffs)} months` : ""}${totalMismatch ? `${cliffMismatch ? " and" : " —"} total vest period varies by ${Math.max(...totals) - Math.min(...totals)} months` : ""}. Misaligned schedules create a "quick vest and leave" incentive for the founder with shorter terms. VCs will flag this in due diligence. Align all co-founders to the same cliff and vest length before raising.`,
+        });
+      }
+    }
+
+    // Cap table mess warning — >5 pre-funding holders is a complexity flag
+    if (founderOnlyHolders.length > 4) {
+      signals.push({
+        tone: "yellow",
+        text: `${founderOnlyHolders.length} founders on the pre-funding cap table. More than 4 co-founders raises governance questions for VCs: decision-making speed, board seat allocation, and what happens if one leaves. Be prepared to explain the founding team structure and individual contributions clearly in due diligence.`,
+      });
+    }
+    const preFundingHolderCount = founders.length;
+    if (preFundingHolderCount > 6 && !anyRoundsEnabled) {
+      signals.push({
+        tone: "yellow",
+        text: `Pre-funding cap table has ${preFundingHolderCount} holders. Complex early-stage cap tables (angels, advisors, friends & family all in before Seed) slow down VC due diligence and create blocking rights issues. Consider consolidating or converting informal agreements to a single SAFE before the priced round.`,
+      });
+    }
+
+    return signals.slice(0, 10);
   }, [
     isUS,
     latest.vcSeats,
@@ -398,6 +428,10 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
     anyRoundsEnabled,
     snaps,
     enabledRounds,
+    founderOnlyHolders,
+    state.vestingEnabled,
+    state.vesting,
+    founders,
   ]);
 
   const recommendations = useMemo(() => {
@@ -848,6 +882,84 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             <div className="mt-2 text-[11px] text-muted-foreground bg-muted/40 rounded px-2 py-1">
               {isUS ? "💡 US default: 10% — Delaware / NVCA standard. Negotiate to 5% before signing." : "💡 India default: 15% — typical in SHA from Seed onward. Push to 10% and exclude VC-dilution rounds."}
             </div>
+          </Card>
+
+          {/* Day 0 Legal Checklist */}
+          <Card className="p-4">
+            <div className="font-bold text-sm mb-1">📋 Day 0 Legal Checklist</div>
+            <p className="text-xs text-muted-foreground mb-3">
+              These are non-negotiable before taking any VC money. Each item costs less than one lawyer hour to set up; skipping any creates a deal-blocker at due diligence.
+            </p>
+            {(() => {
+              type CheckItem = { id: string; label: string; detail: string; critical: boolean; market?: "both" | "india" | "us" };
+              const items: CheckItem[] = ([
+                {
+                  id: "ip",
+                  label: "IP assignment agreement signed by all founders",
+                  detail: isUS
+                    ? "Every founder must sign a PIIA (Proprietary Information & Inventions Agreement) assigning all IP created before and during their tenure to the company. VCs will not close without this. Use Orrick or Cooley's standard form. Takes 20 minutes."
+                    : "Every founder must sign an IP Assignment Deed under the Patents Act 1970 / Copyright Act 1957 transferring all pre-incorporation IP to the company. This includes code, designs, trademarks, and know-how. File with the company secretary. Cost: ~₹5,000 lawyer fee.",
+                  critical: true,
+                  market: "both",
+                },
+                {
+                  id: "buysell",
+                  label: "Co-founder buy-sell / shotgun clause in SHA",
+                  detail: isUS
+                    ? "A shotgun / buy-sell clause lets any co-founder set a price at which they'll either buy the other out or sell their stake at that price. It's the cleanest co-founder divorce mechanism. Without it, a departing co-founder can hold the company hostage. Add to your Founders' Agreement before Seed."
+                    : "A buy-sell clause between co-founders should be in your Founders' Agreement or SHA. Without it, a departing founder retains shares and blocking rights indefinitely. Standard clause: either founder can trigger a valuation process; the non-triggering founder chooses to buy or sell at that value. Add this before any external investment.",
+                  critical: true,
+                  market: "both",
+                },
+                {
+                  id: "vesting-agree",
+                  label: "Co-founder vesting agreement in place",
+                  detail: isUS
+                    ? "Standard: 4-year vest, 1-year cliff, monthly thereafter. All co-founders should be on the same vesting schedule from day one — mismatched vesting is a red flag in VC due diligence. If one founder has shorter vesting, it creates an incentive to exit early and leave others holding the company."
+                    : "Standard: 4-year vest, 1-year cliff (Indian market norm per Blume/3one4 playbooks). All co-founders on the same schedule. The vesting agreement should be a formal contract with the company, not just an informal understanding.",
+                  critical: true,
+                  market: "both",
+                },
+                {
+                  id: "409a",
+                  label: isUS ? "409A valuation obtained before option grants" : "Registered valuer FMV report before any share / option issuance",
+                  detail: isUS
+                    ? "Any option granted without a contemporaneous 409A valuation is a phantom income tax event for the employee. Get a 409A before your first option grant — costs $1,500–$3,000 and is valid for 12 months or until a material event (new round, acquisition)."
+                    : "Under Companies Act 2013, shares issued above FMV attract income tax for the company (Section 56(2)(viib) angel tax). Get a SEBI-registered valuer's FMV report before allotting any shares or ESOPs. Cost: ₹30,000–₹80,000. Valid until next funding event.",
+                  critical: !isUS,
+                  market: "both",
+                },
+                {
+                  id: "bank",
+                  label: "Separate company bank account (no commingling)",
+                  detail: "Company funds must be in a dedicated corporate account. Commingling personal and company funds pierces the corporate veil and is a deal-stopper in any serious due diligence. Set up a current account in the company's name on Day 1.",
+                  critical: false,
+                  market: "both",
+                },
+                {
+                  id: "gstin",
+                  label: "GST registration (if revenue > ₹20L threshold)",
+                  detail: "If your company is generating revenue above the GST threshold or providing B2B SaaS services, register for GST immediately. Unregistered revenue creates retroactive tax liability that complicates any investment round.",
+                  critical: false,
+                  market: "india",
+                },
+              ] as CheckItem[]).filter((it) => !it.market || it.market === "both" || (isUS ? it.market === "us" : it.market === "india"));
+              return (
+                <div className="space-y-2">
+                  {items.map((item) => (
+                    <div key={item.id} className={`rounded-md border p-2.5 ${item.critical ? "border-amber-300/70 bg-amber-50/50 dark:bg-amber-950/20" : "border-border bg-muted/20"}`}>
+                      <div className="flex items-start gap-2">
+                        <span className="text-sm mt-0.5">{item.critical ? "⚠️" : "✓"}</span>
+                        <div className="flex-1">
+                          <div className="text-xs font-semibold">{item.label}</div>
+                          <div className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">{item.detail}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </Card>
 
           {/* Pre-funding Cap Table Editor */}
@@ -2143,6 +2255,51 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   clause: isUS
                     ? "Key man event means departure of the named CEO only. Company has 90 days to appoint a board-approved replacement. Key man does not trigger drag-along, redemption rights, or any anti-dilution adjustment."
                     : "Key man event means voluntary departure of the CEO only. Company has 90 days to appoint a board-approved replacement. Key man event does not trigger preference share conversion, drag-along, or redemption rights.",
+                },
+                {
+                  key: "badleaver",
+                  title: "Bad leaver / good leaver definitions",
+                  active: state.rounds.seed.enabled,
+                  market: "both",
+                  demand: isUS
+                    ? "VCs define any founder departure as 'bad leaver' by default (fraud, resignation, termination for cause OR convenience) — triggering clawback of unvested shares at nominal/cost price."
+                    : "VCs define broad 'bad leaver' categories including voluntary resignation, not-for-cause termination, and breach of employment terms — entitling the company to buy back vested AND unvested shares at cost.",
+                  push: isUS
+                    ? "Narrow bad leaver to: (1) fraud, (2) criminal conviction, (3) gross negligence causing material harm — nothing broader. Good leaver (death, disability, termination without cause) = vesting accelerates and shares transfer at FMV. Add a sunset: bad leaver provisions expire 12 months after IPO or trade sale."
+                    : "Narrow bad leaver to: (1) fraud, (2) criminal conviction, (3) gross negligence. Good leaver (death, disability, termination without cause) = vesting accelerates and shares transfer at FMV. Explicitly exclude 'failure to meet KPIs' and 'strategic disagreement' as bad leaver triggers — these are VCs' favourite constructive-termination tools.",
+                  clause: isUS
+                    ? "'Bad Leaver' means a Founder whose employment is terminated solely by reason of: (i) conviction of a felony, (ii) fraud or embezzlement against the Company, or (iii) gross negligence causing material financial harm, as determined by a court of competent jurisdiction. Voluntary resignation and termination without cause are explicitly excluded from the Bad Leaver definition."
+                    : "'Bad Leaver' means a Founder whose employment is terminated solely by reason of: (i) conviction of an offence involving moral turpitude, (ii) fraud or misappropriation of Company assets, or (iii) gross negligence causing material harm as determined by a competent court. For the avoidance of doubt, voluntary resignation for Good Reason, termination without cause, and strategic disagreements do not constitute Bad Leaver events.",
+                },
+                {
+                  key: "quorum",
+                  title: "Board quorum and meeting requirements",
+                  active: state.rounds.seed.enabled,
+                  market: "both",
+                  demand: isUS
+                    ? "VCs may insist that quorum for board meetings requires the presence of at least one VC-nominated director — giving any single VC the ability to block decisions by simply not attending."
+                    : "VCs insist that quorum for board meetings requires the presence of at least one VC-nominated director or an investor representative — enabling a single no-show to paralyse the board.",
+                  push: isUS
+                    ? "Push for: (1) quorum = simple majority of total directors (not class-based), (2) if quorum not met, meeting adjourned 5 business days and then proceeds regardless of VC attendance, (3) written consent resolutions (board action without a meeting) permitted for routine matters with 48-hour notice."
+                    : "Push for: (1) quorum = majority of directors present in person or by video — no class-based quorum, (2) if quorum fails, meeting adjourned 7 days and then valid regardless, (3) circular resolutions permitted for routine operational matters with written consent of all directors.",
+                  clause: isUS
+                    ? "Quorum for any board meeting shall be a majority of the total number of directors then in office. If quorum is not present at any duly noticed meeting, such meeting shall be adjourned for five (5) business days, and such adjourned meeting shall proceed with a quorum consisting of any two (2) directors present."
+                    : "Quorum for board meetings shall be a majority of directors then in office, present in person or by electronic means. If quorum is not met, the meeting shall stand adjourned for 7 (seven) days and may then proceed with those directors present, provided written notice of the adjourned meeting was sent to all directors.",
+                },
+                {
+                  key: "inforights",
+                  title: "Information rights — competitive risk",
+                  active: state.rounds.seed.enabled,
+                  market: "both",
+                  demand: isUS
+                    ? "Standard IRA information rights: monthly financials, annual audited accounts, annual budget, board materials, and the right to inspect books and records on 5 days' notice. Some VCs also demand pipeline data, customer names, and employee comp tables."
+                    : "Standard SHA information rights: quarterly management accounts, annual audited financials, annual business plan, and board materials. Aggressive VCs request monthly operational metrics, customer cohorts, and access to accounting software.",
+                  push: isUS
+                    ? "Accept standard financials + board materials. Push back on: (1) customer-specific data — redact to cohort / ARR band, (2) employee comp tables — summarise by band, not individual, (3) pipeline CRM access — provide summary, not Salesforce login, (4) add a confidentiality clause: VC may not share information rights data with portfolio companies in the same space."
+                    : "Accept quarterly accounts and board materials. Push back on: (1) customer names — provide anonymised cohort data, (2) salary details — provide banded summaries, (3) real-time metric dashboards — agree on monthly report format instead, (4) add an explicit competitive-use restriction: information received under these rights may not be shared with or used for the benefit of any VC portfolio company operating in the same sector.",
+                  clause: isUS
+                    ? "All information provided under these Information Rights is confidential. Investor shall not share, disclose, or use such information for the benefit of any other company in Investor's portfolio that operates in a business competitive with the Company. Breach of this confidentiality obligation entitles the Company to suspend Information Rights immediately on written notice."
+                    : "All information provided to Investor under this clause shall be treated as confidential and shall not be shared with, or used for the benefit of, any portfolio company of Investor operating in the same or similar business as the Company. Investor shall procure that its partners, employees, and nominees treat such information as confidential. Breach entitles the Company to suspend information delivery on 14 days' written notice.",
                 },
                 // ── Board seat retention condition ─────────────────────────
                 {
