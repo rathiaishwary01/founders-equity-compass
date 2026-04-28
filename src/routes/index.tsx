@@ -1,6 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -35,15 +33,6 @@ export const Route = createFileRoute("/")({
 });
 
 function Landing() {
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!loading && user) {
-      navigate({ to: "/scenarios" });
-    }
-  }, [user, loading, navigate]);
-
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -51,18 +40,13 @@ function Landing() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
-              C
+              E
             </div>
             <span className="font-bold text-lg text-foreground">EquiCompass</span>
           </div>
-          <div className="flex gap-2">
-            <Link to="/auth">
-              <Button variant="ghost">Sign in</Button>
-            </Link>
-            <Link to="/auth">
-              <Button>Get started</Button>
-            </Link>
-          </div>
+          <Link to="/simulator">
+            <Button>Open simulator</Button>
+          </Link>
         </div>
       </header>
 
@@ -82,17 +66,12 @@ function Landing() {
             Know exactly what you're giving away before you sign.
           </h1>
           <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl">
-            Model every VC round, SAFE, board seat, and liquidation preference — in minutes.
+            Model every VC round, SAFE, board seat, and liquidation preference — in minutes. Free and open source.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link to="/auth">
+            <Link to="/simulator">
               <Button size="lg" className="gap-2">
-                Start free <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-            <Link to="/share/$slug" params={{ slug: "demo" }}>
-              <Button size="lg" variant="outline">
-                See an example
+                Try it free <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
           </div>
@@ -216,9 +195,9 @@ function Landing() {
             Be ready.
           </h2>
           <div className="mt-8">
-            <Link to="/auth">
+            <Link to="/simulator">
               <Button size="lg" variant="secondary" className="gap-2">
-                Try EquiCompass free <ArrowRight className="h-4 w-4" />
+                Open EquiCompass <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
           </div>
@@ -231,24 +210,18 @@ function Landing() {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold text-sm">
-                C
+                E
               </div>
               <span className="font-semibold text-foreground">EquiCompass</span>
             </div>
             <p className="text-xs text-muted-foreground max-w-md">
-              For negotiation planning only — not legal advice.
+              For negotiation planning only — not legal advice. Open source under MIT licence.
             </p>
           </div>
           <nav className="flex gap-6 text-sm text-muted-foreground">
-            <Link to="/" className="hover:text-foreground">
-              Home
-            </Link>
-            <Link to="/auth" className="hover:text-foreground">
-              Sign in
-            </Link>
-            <a href="#" className="hover:text-foreground">
-              Privacy
-            </a>
+            <Link to="/" className="hover:text-foreground">Home</Link>
+            <Link to="/simulator" className="hover:text-foreground">Simulator</Link>
+            <a href="https://github.com/EquiCompass/founders-equity-compass" target="_blank" rel="noopener noreferrer" className="hover:text-foreground">GitHub</a>
           </nav>
         </div>
       </footer>

@@ -1,7 +1,5 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
-import { AuthProvider } from "@/contexts/AuthContext";
 import { Toaster } from "@/components/ui/sonner";
-
 import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
@@ -31,26 +29,19 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "EquiCompass — Equity & VC Negotiation Simulator for Indian Founders" },
-      { name: "description", content: "Model your cap table, simulate dilution across funding rounds, and walk into VC negotiations prepared. Built for Indian founders." },
+      { title: "EquiCompass — Equity & VC Negotiation Simulator for Founders" },
+      { name: "description", content: "Model your cap table, simulate dilution across funding rounds, and walk into VC negotiations prepared." },
       { name: "author", content: "EquiCompass" },
       { name: "keywords", content: "equity dilution, cap table, VC negotiation, startup funding, SAFE, liquidation preference, Indian startups, term sheet" },
-      // Open Graph — controls WhatsApp, LinkedIn, Slack previews
       { property: "og:title", content: "EquiCompass — Equity & VC Negotiation Simulator" },
-      { property: "og:description", content: "Model dilution, simulate exits, and decode VC term sheets before you sign. Free for Indian founders." },
+      { property: "og:description", content: "Model dilution, simulate exits, and decode VC term sheets before you sign. Free and open source." },
       { property: "og:type", content: "website" },
       { property: "og:site_name", content: "EquiCompass" },
-      // Twitter / X
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "EquiCompass — Equity & VC Negotiation Simulator" },
-      { name: "twitter:description", content: "Model dilution, simulate exits, and decode VC term sheets before you sign. Free for Indian founders." },
+      { name: "twitter:description", content: "Model dilution, simulate exits, and decode VC term sheets before you sign. Free and open source." },
     ],
-    links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-    ],
+    links: [{ rel: "stylesheet", href: appCss }],
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -59,7 +50,7 @@ export const Route = createRootRoute({
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-IN">
+    <html lang="en">
       <head>
         <HeadContent />
       </head>
@@ -73,9 +64,9 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   return (
-    <AuthProvider>
+    <>
       <Outlet />
       <Toaster />
-    </AuthProvider>
+    </>
   );
 }

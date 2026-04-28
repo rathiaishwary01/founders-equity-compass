@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SimulatorRouteImport } from './routes/simulator'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ScenariosIndexRouteImport } from './routes/scenarios.index'
 import { Route as ShareSlugRouteImport } from './routes/share.$slug'
 import { Route as ScenariosIdRouteImport } from './routes/scenarios.$id'
 
+const SimulatorRoute = SimulatorRouteImport.update({
+  id: '/simulator',
+  path: '/simulator',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -44,6 +50,7 @@ const ScenariosIdRoute = ScenariosIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/simulator': typeof SimulatorRoute
   '/scenarios/$id': typeof ScenariosIdRoute
   '/share/$slug': typeof ShareSlugRoute
   '/scenarios/': typeof ScenariosIndexRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/simulator': typeof SimulatorRoute
   '/scenarios/$id': typeof ScenariosIdRoute
   '/share/$slug': typeof ShareSlugRoute
   '/scenarios': typeof ScenariosIndexRoute
@@ -59,19 +67,33 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/simulator': typeof SimulatorRoute
   '/scenarios/$id': typeof ScenariosIdRoute
   '/share/$slug': typeof ShareSlugRoute
   '/scenarios/': typeof ScenariosIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/scenarios/$id' | '/share/$slug' | '/scenarios/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/simulator'
+    | '/scenarios/$id'
+    | '/share/$slug'
+    | '/scenarios/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/scenarios/$id' | '/share/$slug' | '/scenarios'
+  to:
+    | '/'
+    | '/auth'
+    | '/simulator'
+    | '/scenarios/$id'
+    | '/share/$slug'
+    | '/scenarios'
   id:
     | '__root__'
     | '/'
     | '/auth'
+    | '/simulator'
     | '/scenarios/$id'
     | '/share/$slug'
     | '/scenarios/'
@@ -80,6 +102,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  SimulatorRoute: typeof SimulatorRoute
   ScenariosIdRoute: typeof ScenariosIdRoute
   ShareSlugRoute: typeof ShareSlugRoute
   ScenariosIndexRoute: typeof ScenariosIndexRoute
@@ -87,6 +110,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/simulator': {
+      id: '/simulator'
+      path: '/simulator'
+      fullPath: '/simulator'
+      preLoaderRoute: typeof SimulatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -128,6 +158,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  SimulatorRoute: SimulatorRoute,
   ScenariosIdRoute: ScenariosIdRoute,
   ShareSlugRoute: ShareSlugRoute,
   ScenariosIndexRoute: ScenariosIndexRoute,
@@ -135,12 +166,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
