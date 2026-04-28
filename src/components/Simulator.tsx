@@ -2089,11 +2089,11 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             </div>
 
             {(() => {
-              type VetoItem = { key: string; title: string; active: boolean; market: "both" | "india" | "us"; demand: string; push: string; clause: string };
+              type VetoItem = { key: string; title: string; active: boolean; market: "both" | "india" | "us"; demand: string; push: string; clause: string; group: "board" | "economics" | "founder" | "governance" };
               const vetoItems: VetoItem[] = ([
                 // ── Universal ──────────────────────────────────────────────
                 {
-                  key: "equity",
+                  key: "equity", group: "economics",
                   title: "New equity issuance approval",
                   active: state.rounds.seed.enabled,
                   market: "both",
@@ -2102,7 +2102,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   clause: "Deemed approved if VC does not respond in writing within 10 business days of written notice.",
                 },
                 {
-                  key: "exec",
+                  key: "exec", group: "board",
                   title: "CEO / executive hiring & firing",
                   active: state.rounds.a.enabled,
                   market: "both",
@@ -2113,7 +2113,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                     : "Founders removed without Cause receive 6-month salary and full acceleration of unvested equity.",
                 },
                 {
-                  key: "mna",
+                  key: "mna", group: "governance",
                   title: isUS ? "Acquisitions above $500K" : "Acquisitions above ₹4Cr (~$500K)",
                   active: state.rounds.a.enabled,
                   market: "both",
@@ -2126,7 +2126,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   clause: "VC must respond in writing within 15 business days of notice, or acquisition is deemed approved.",
                 },
                 {
-                  key: "debt",
+                  key: "debt", group: "economics",
                   title: isUS ? "New debt above $250K" : "New debt above ₹2Cr (~$250K)",
                   active: state.rounds.seed.enabled,
                   market: "both",
@@ -2139,7 +2139,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   clause: "Pre-approved for credit facilities and their renewals as disclosed in the SHA schedule.",
                 },
                 {
-                  key: "related",
+                  key: "related", group: "governance",
                   title: "Related party transactions",
                   active: state.rounds.seed.enabled,
                   market: "both",
@@ -2148,7 +2148,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   clause: "Board audit committee certification sufficient for transactions under ₹1Cr / $100K. VC consent needed above that threshold.",
                 },
                 {
-                  key: "windup",
+                  key: "windup", group: "governance",
                   title: "Voluntary liquidation / winding up",
                   active: state.rounds.seed.enabled,
                   market: "both",
@@ -2157,7 +2157,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   clause: "No single investor or investor class can force wind-up without approval of 75% of all shareholders by value, regardless of ownership percentage.",
                 },
                 {
-                  key: "amend",
+                  key: "amend", group: "governance",
                   title: isUS ? "Amendment of Charter / IRA / SHA" : "Amendment of SHA / AoA",
                   active: state.rounds.a.enabled,
                   market: "both",
@@ -2172,7 +2172,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                     : "Amendments to SHA Clauses [X] (liquidation preference), [Y] (anti-dilution), and [Z] (board composition) require VC consent. All others require 75% shareholder approval.",
                 },
                 {
-                  key: "esop",
+                  key: "esop", group: "economics",
                   title: "ESOP / option pool increase",
                   active: state.rounds.a.enabled,
                   market: "both",
@@ -2181,7 +2181,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   clause: "ESOP increases within the pre-agreed SHA schedule require board approval only. Increases beyond the schedule require VC consent within 10 business days.",
                 },
                 {
-                  key: "ipo",
+                  key: "ipo", group: "board",
                   title: "IPO decision",
                   active: state.rounds.b.enabled,
                   market: "both",
@@ -2192,7 +2192,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                     : "VC consent not required for IPO if: (i) ≥5 years since first investment, (ii) IPO price ≥3× Series A cost basis, and (iii) 51% of shareholders by value approve.",
                 },
                 {
-                  key: "div",
+                  key: "div", group: "economics",
                   title: "Dividend declaration",
                   active: state.rounds.seed.enabled,
                   market: "both",
@@ -2201,7 +2201,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   clause: "Performance bonuses and salary increases approved by the board compensation committee are explicitly excluded from the dividend restriction.",
                 },
                 {
-                  key: "budget",
+                  key: "budget", group: "economics",
                   title: "Annual budget & business plan approval",
                   active: state.rounds.seed.enabled,
                   market: "both",
@@ -2216,7 +2216,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                     : "Annual budget approved by board resolution. CEO may authorise line-item variance up to 20% without further board approval. Any variance exceeding 20% of aggregate opex requires board notification within 15 days. Budget is deemed approved if the board fails to vote within 30 days of submission by management.",
                 },
                 {
-                  key: "rofr",
+                  key: "rofr", group: "founder",
                   title: "Right of First Refusal on founder share sales",
                   active: state.rounds.seed.enabled,
                   market: "both",
@@ -2229,7 +2229,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                     : "ROFR lapses if not exercised in writing within 20 business days of notice. Intra-family and estate-planning transfers are exempt.",
                 },
                 {
-                  key: "drag",
+                  key: "drag", group: "founder",
                   title: "Drag-along rights",
                   active: state.rounds.a.enabled,
                   market: "both",
@@ -2242,7 +2242,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                     : `Drag-along right requires approval of: (i) board resolution with founder director approval, (ii) ≥75% of preference shareholders, and (iii) ≥51% of equity shareholders by value. Drag-along shall not be triggered at a valuation below ${latest.valuation ? fmtM(latest.valuation) : "[last round post-money]"} (the Floor Valuation) without the unanimous written consent of all Founder Directors.`,
                 },
                 {
-                  key: "bizchange",
+                  key: "bizchange", group: "governance",
                   title: "Change of principal business activity",
                   active: state.rounds.a.enabled,
                   market: "both",
@@ -2251,7 +2251,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   clause: "Change of principal business means shifting to a primary revenue activity unrelated to [defined business description]. Board-approved product pivots within the same technology domain are not a change of principal business.",
                 },
                 {
-                  key: "keyman",
+                  key: "keyman", group: "board",
                   title: "Key man / founder departure provisions",
                   active: state.rounds.a.enabled,
                   market: "both",
@@ -2264,7 +2264,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                     : "Key man event means voluntary departure of the CEO only. Company has 90 days to appoint a board-approved replacement. Key man event does not trigger preference share conversion, drag-along, or redemption rights.",
                 },
                 {
-                  key: "badleaver",
+                  key: "badleaver", group: "founder",
                   title: "Bad leaver / good leaver definitions",
                   active: state.rounds.seed.enabled,
                   market: "both",
@@ -2279,7 +2279,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                     : "'Bad Leaver' means a Founder whose employment is terminated solely by reason of: (i) conviction of an offence involving moral turpitude, (ii) fraud or misappropriation of Company assets, or (iii) gross negligence causing material harm as determined by a competent court. For the avoidance of doubt, voluntary resignation for Good Reason, termination without cause, and strategic disagreements do not constitute Bad Leaver events.",
                 },
                 {
-                  key: "quorum",
+                  key: "quorum", group: "board",
                   title: "Board quorum and meeting requirements",
                   active: state.rounds.seed.enabled,
                   market: "both",
@@ -2294,7 +2294,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                     : "Quorum for board meetings shall be a majority of directors then in office, present in person or by electronic means. If quorum is not met, the meeting shall stand adjourned for 7 (seven) days and may then proceed with those directors present, provided written notice of the adjourned meeting was sent to all directors.",
                 },
                 {
-                  key: "inforights",
+                  key: "inforights", group: "founder",
                   title: "Information rights — competitive risk",
                   active: state.rounds.seed.enabled,
                   market: "both",
@@ -2310,7 +2310,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                 },
                 // ── Board seat retention condition ─────────────────────────
                 {
-                  key: "boardretention",
+                  key: "boardretention", group: "board",
                   title: "Minimum equity condition for founder board seats",
                   active: anyRoundsEnabled,
                   market: "both",
@@ -2326,7 +2326,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                 },
                 // ── India-specific ─────────────────────────────────────────
                 {
-                  key: "prefconv",
+                  key: "prefconv", group: "economics",
                   title: "Conversion timing of preference shares / CCDs",
                   active: state.rounds.seed.enabled,
                   market: "india",
@@ -2335,7 +2335,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   clause: "Compulsory conversion occurs on: (i) qualified IPO at price ≥ 2× subscription price, (ii) trade sale at aggregate valuation ≥ ₹[X]Cr, or (iii) VC election after 60 months from allotment. Conversion price floor = subscription price.",
                 },
                 {
-                  key: "auditor",
+                  key: "auditor", group: "governance",
                   title: "Change of statutory auditor",
                   active: state.rounds.seed.enabled,
                   market: "india",
@@ -2345,7 +2345,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                 },
                 // ── US-specific ────────────────────────────────────────────
                 {
-                  key: "qsbs",
+                  key: "qsbs", group: "economics",
                   title: "QSBS eligibility — Section 1202 protection",
                   active: state.rounds.seed.enabled,
                   market: "us",
@@ -2354,7 +2354,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   clause: "Company shall provide written notice to all investors at least 30 days prior to any action that would cause the company's stock to cease to qualify as QSBS under Section 1202 of the IRC.",
                 },
                 {
-                  key: "repurchase",
+                  key: "repurchase", group: "economics",
                   title: "Stock repurchase (NVCA standard)",
                   active: state.rounds.seed.enabled,
                   market: "us",
@@ -2363,7 +2363,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   clause: "Company may repurchase securities without preferred stockholder approval only: (i) pursuant to equity incentive plan repurchase rights at not more than cost, or (ii) pursuant to board-approved buybacks offered pro-rata to all stockholders.",
                 },
                 {
-                  key: "authshares",
+                  key: "authshares", group: "economics",
                   title: "Authorized share class increase (Delaware)",
                   active: state.rounds.a.enabled,
                   market: "us",
@@ -2373,48 +2373,72 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                 },
               ] as VetoItem[]).filter((it) => it.market === "both" || (isUS ? it.market === "us" : it.market === "india"));
 
+              const renderVetoItem = (it: VetoItem) => (
+                <AccordionItem
+                  key={it.key}
+                  value={it.key}
+                  className={cn(
+                    "px-3 rounded-md border mb-1.5 last:mb-0",
+                    it.active ? "border-red-500/60 bg-red-500/5" : "border-border",
+                  )}
+                >
+                  <AccordionTrigger className="hover:no-underline py-3">
+                    <div className="flex items-center justify-between w-full pr-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className={cn("h-2.5 w-2.5 rounded-full flex-shrink-0", it.active ? "bg-red-500" : "bg-emerald-400")} />
+                        <span className="text-sm font-semibold text-left leading-snug">{it.title}</span>
+                      </div>
+                      <Badge className={cn("text-[10px] ml-2 flex-shrink-0", it.active ? "bg-red-500/15 text-red-600 border border-red-500/30" : "bg-emerald-500/15 text-emerald-700 border border-emerald-500/30")}>
+                        {it.active ? "ACTIVE" : "INACTIVE"}
+                      </Badge>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pt-2">
+                    <div className="space-y-3">
+                      <div>
+                        <div className="text-xs font-bold">⚠️ What VCs demand</div>
+                        <div className="text-xs text-muted-foreground mt-1">{it.demand}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold">✅ Push back to</div>
+                        <div className="text-xs text-muted-foreground mt-1">{it.push}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold">📄 Exact clause to negotiate</div>
+                        <div className="text-xs text-muted-foreground mt-1">{it.clause}</div>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              );
+              const vetoSections: Array<{ key: VetoItem["group"]; label: string; icon: string }> = [
+                { key: "board",      label: "Board & Control",       icon: "🏛️" },
+                { key: "economics",  label: "Economics & Cap Table",  icon: "💰" },
+                { key: "founder",    label: "Founder Protections",    icon: "🛡️" },
+                { key: "governance", label: "Governance & Documents", icon: "📋" },
+              ];
               return (
-                <div className="mt-4">
-                  <Accordion type="single" collapsible className="w-full">
-                    {vetoItems.map((it) => (
-                      <AccordionItem
-                        key={it.key}
-                        value={it.key}
-                        className={cn(
-                          "px-3 rounded-md border mb-2 last:mb-0",
-                          it.active ? "border-red-500/60 bg-red-500/5" : "border-border",
-                        )}
-                      >
-                        <AccordionTrigger className="hover:no-underline py-3">
-                          <div className="flex items-center justify-between w-full pr-2">
-                            <div className="flex items-center gap-2">
-                              <span className={cn("h-2.5 w-2.5 rounded-full", it.active ? "bg-red-500" : "bg-emerald-400")} />
-                              <span className="text-sm font-semibold">{it.title}</span>
-                            </div>
-                            <Badge className={cn("text-[10px]", it.active ? "bg-red-500/15 text-red-600 border border-red-500/30" : "bg-emerald-500/15 text-emerald-700 border border-emerald-500/30")}>
-                              {it.active ? "ACTIVE" : "INACTIVE"}
-                            </Badge>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="pt-2">
-                          <div className="space-y-3">
-                            <div>
-                              <div className="text-xs font-bold">⚠️ What VCs demand</div>
-                              <div className="text-xs text-muted-foreground mt-1">{it.demand}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs font-bold">✅ Push back to</div>
-                              <div className="text-xs text-muted-foreground mt-1">{it.push}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs font-bold">📄 Exact clause to negotiate</div>
-                              <div className="text-xs text-muted-foreground mt-1">{it.clause}</div>
-                            </div>
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
+                <div className="mt-4 space-y-5">
+                  {vetoSections.map(({ key: gk, label, icon }) => {
+                    const groupItems = vetoItems.filter((it) => it.group === gk);
+                    if (groupItems.length === 0) return null;
+                    const activeCount = groupItems.filter((it) => it.active).length;
+                    return (
+                      <div key={gk}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span>{icon}</span>
+                          <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
+                          {activeCount > 0 && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">{activeCount} active</span>
+                          )}
+                          <div className="flex-1 h-px bg-border" />
+                        </div>
+                        <Accordion type="single" collapsible className="w-full">
+                          {groupItems.map(renderVetoItem)}
+                        </Accordion>
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })()}
