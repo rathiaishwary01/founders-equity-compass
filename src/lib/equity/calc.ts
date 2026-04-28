@@ -56,8 +56,9 @@ export function computeSnaps(state: SimulatorState): Record<string, Snapshot> {
     if (!pre || !inv) continue;
 
     // ── SAFE converts at first priced round ──
-    // MFN / no-cap: effPre = this round's pre-money (same price as round investors)
-    if (safe.enabled && !safeApplied && safe.amount > 0 && (safe.mfn || safe.cap > 0)) {
+    // MFN SAFEs (e.g. YC $375K) skip pre-seed and convert at the first institutional
+    // round (Seed+). Non-MFN SAFEs convert at whichever round comes first.
+    if (safe.enabled && !safeApplied && safe.amount > 0 && (safe.mfn || safe.cap > 0) && !(safe.mfn && key === "preseed")) {
       const effPre = safe.mfn
         ? pre
         : Math.min(safe.cap, pre * (1 - safe.discount / 100));
@@ -65,7 +66,7 @@ export function computeSnaps(state: SimulatorState): Record<string, Snapshot> {
       const existTotal2 = cur.reduce((s, h) => s + h.pct, 0);
       const scale2 = (100 - safePct) / existTotal2;
       cur = cur.map((h) => ({ ...h, pct: h.pct * scale2 }));
-      cur.push({ name: "SAFE Investors", role: "Pre-Seed SAFE", pct: safePct, type: "safe" });
+      cur.push({ name: "SAFE Investors", role: ROUND_LABELS[key] + " SAFE", pct: safePct, type: "safe" });
       roundData.push({ vcName: "SAFE Investors", investment: safe.amount, prefMult: 1, prefType: "non", type: "safe", postMoney: pre, roundKey: "safe" });
       safeApplied = true;
     }
@@ -155,9 +156,16 @@ export function computeSnaps(state: SimulatorState): Record<string, Snapshot> {
 
         cur = cur.map((h) => {
           if (h.name === rd.vcName) return { ...h, pct: newPct };
-          return { ...h, pct: h.pct - (h.pct / othersTotal) * extraPct };
+          // Clamp to 0 — prevents negative pct in extreme down rounds
+          return { ...h, pct: Math.max(0, h.pct - (h.pct / othersTotal) * extraPct) };
         });
       }
+    }
+
+    // Renormalize after BBWA to correct any floating-point drift
+    const bbwaTotal = cur.reduce((s, h) => s + h.pct, 0);
+    if (bbwaTotal > 0 && Math.abs(bbwaTotal - 100) > 0.0001) {
+      cur = cur.map((h) => ({ ...h, pct: (h.pct / bbwaTotal) * 100 }));
     }
 
     prevPostMoney = post;

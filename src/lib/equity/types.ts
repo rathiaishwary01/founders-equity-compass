@@ -106,19 +106,19 @@ export interface Snapshot {
 }
 
 export const INITIAL_HOLDERS: Holder[] = [
-  { name: "Nikhil Gundawar", role: "CEO", pct: 32.4, type: "founder" },
-  { name: "Mihir Dash", role: "CTO/AI", pct: 25.2, type: "founder" },
-  { name: "Aishwary Rathi", role: "COO", pct: 16.2, type: "founder" },
-  { name: "Bhavuk Manocha", role: "CSO", pct: 16.2, type: "founder" },
+  { name: "Founder 1", role: "CEO", pct: 32.4, type: "founder" },
+  { name: "Founder 2", role: "CTO", pct: 25.2, type: "founder" },
+  { name: "Founder 3", role: "COO", pct: 16.2, type: "founder" },
+  { name: "Founder 4", role: "Co-founder", pct: 16.2, type: "founder" },
   { name: "ESOP Pool", role: "Employees", pct: 8.0, type: "esop" },
   { name: "Advisory Pool", role: "Advisors", pct: 2.0, type: "advisory" },
 ];
 
 export const HOLDER_COLORS: Record<string, string> = {
-  "Nikhil Gundawar": "#4361ee",
-  "Mihir Dash": "#3a0ca3",
-  "Aishwary Rathi": "#7209b7",
-  "Bhavuk Manocha": "#f72585",
+  "Founder 1": "#4361ee",
+  "Founder 2": "#3a0ca3",
+  "Founder 3": "#7209b7",
+  "Founder 4": "#f72585",
   "ESOP Pool": "#4cc9f0",
   "Advisory Pool": "#90be6d",
   "SAFE Investors": "#f59e0b",

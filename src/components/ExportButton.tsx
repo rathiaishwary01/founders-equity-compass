@@ -28,7 +28,7 @@ export function ExportButton({ state, scenarioName }: Props) {
       const snapKeys = Object.keys(snaps);
 
       const founderPct = latest.holders.filter((h) => h.type === "founder").reduce((s, h) => s + h.pct, 0);
-      const vcPct = latest.holders.filter((h) => h.type === "vc").reduce((s, h) => s + h.pct, 0);
+      const vcPct = latest.holders.filter((h) => h.type === "vc" || h.type === "safe").reduce((s, h) => s + h.pct, 0);
       const founderSeats = state.founderSeats;
       const totalPref = (latest.roundData || []).filter((r) => r.type === "vc").reduce((s, r) => s + r.investment * r.prefMult, 0);
 
@@ -69,7 +69,7 @@ export function ExportButton({ state, scenarioName }: Props) {
         state.accelerationAtExit ?? true,
       );
       const founderTotal = fPayouts.reduce((s, f) => s + f.payout, 0);
-      const vcTotal = latest.holders.filter((h) => h.type === "vc").reduce((s, h) => s + (allPayouts[h.name] || 0), 0);
+      const vcTotal = latest.holders.filter((h) => h.type === "vc" || h.type === "safe").reduce((s, h) => s + (allPayouts[h.name] || 0), 0);
       const rData = (latest.roundData || []).filter((r) => r.type === "vc");
 
       const payoutRows: PdfData["payouts"] = [...latest.holders]

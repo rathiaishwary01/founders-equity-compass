@@ -70,7 +70,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
   const [capRound, setCapRound] = useState<string>("pre");
   const activeCap = snaps[capRound] ?? latest;
   const [expertMode, setExpertMode] = useState(false);
-  const [activeTab, setActiveTab] = useState("rounds");
+  const [activeTab, setActiveTab] = useState("setup");
   const [savedScenarios, setSavedScenarios] = useState<
     Array<{
       name: string;
@@ -132,7 +132,8 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
   const founderSumOk = Math.abs(founderSum - 100) < 0.11;
 
   const founderPct = latest.holders.filter((h) => h.type === "founder").reduce((s, h) => s + h.pct, 0);
-  const vcPct = latest.holders.filter((h) => h.type === "vc").reduce((s, h) => s + h.pct, 0);
+  // Include SAFE investors — they hold converted equity just like VC investors
+  const vcPct = latest.holders.filter((h) => h.type === "vc" || h.type === "safe").reduce((s, h) => s + h.pct, 0);
 
   // Founder seats from state (BUG FIX 3)
   const founderSeats = state.founderSeats;
@@ -153,7 +154,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
   const totalPref = (latest.roundData || []).filter((r) => r.type === "vc").reduce((s, r) => s + r.investment * r.prefMult, 0);
   const totalInvested = (latest.roundData || []).filter((r) => r.type === "vc").reduce((s, r) => s + r.investment, 0);
   const allPayouts = calcPayouts(latest, state.exitValue, state.usePref);
-  const vcTotal = latest.holders.filter((h) => h.type === "vc").reduce((s, h) => s + (allPayouts[h.name] || 0), 0);
+  const vcTotal = latest.holders.filter((h) => h.type === "vc" || h.type === "safe").reduce((s, h) => s + (allPayouts[h.name] || 0), 0);
 
   // ── Input validation ──
   const validationErrors = useMemo(() => {
@@ -282,7 +283,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
     if (isUS) {
       signals.push({
         tone: "yellow",
-        text: "Indian-incorporated entity: US institutional VCs (YC, Sequoia US, a16z) typically require a Delaware C-Corp flip before closing. Budget $30–50K and 60–90 days.",
+        text: "If currently incorporated in India: most US institutional VCs (YC, Sequoia US, a16z) require a Delaware C-Corp flip before closing. If already a Delaware entity, this does not apply.",
       });
       if (state.safe.enabled) {
         signals.push({
@@ -295,7 +296,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
       if (anyRoundsEnabled) {
         signals.push({
           tone: "yellow",
-          text: "Foreign VC investment requires FEMA compliance — file FC-GPR within 30 days of allotment. Ensure pricing is at or above FMV per SEBI norms.",
+          text: "If any investor is foreign-domiciled (US, Singapore, Cayman, etc.): FEMA compliance required — FC-GPR filing within 30 days and FMV pricing per SEBI norms. Indian VC investment does not require FC-GPR.",
         });
       }
     }
@@ -316,119 +317,178 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
   ]);
 
   const recommendations = useMemo(() => {
-    const recs: Array<{ action: string; impact: string; detail: string }> = [];
+    type Timing = "now" | "next-round" | "ongoing";
+    type Priority = "critical" | "high" | "medium";
+    interface Rec {
+      priority: Priority;
+      timing: Timing;
+      action: string;
+      why: string;
+      nextStep: string;
+      leverage?: string;
+    }
+    const recs: Rec[] = [];
     const vcSeats = latest.vcSeats;
 
-    // ── Board control (shared logic, market-aware text) ──────────────────────
+    // ── Board control lost ───────────────────────────────────────────────────
     if (vcSeats >= founderSeats + 1) {
       recs.push({
-        action: `CRITICAL: You have lost board control — VCs hold ${vcSeats} seats vs your ${founderSeats}`,
-        impact: isUS
-          ? "Under DGCL, the board controls CEO hiring/firing, M&A approval, and equity issuances — without founder majority, you can be removed"
-          : "VCs can now remove the CEO, block acquisitions, and override strategy without founder consent",
-        detail: isUS
-          ? "Push every round to observer-only. Negotiate that founders nominate the independent director. Add a supermajority board consent requirement for CEO removal in your SHA."
-          : "Push every round to observer-only except the lead investor. Negotiate founders nominate the independent director. Add unanimous board consent for CEO removal to the SHA.",
+        priority: "critical",
+        timing: "now",
+        action: `Reclaim board balance — VCs hold ${vcSeats} seats, you hold ${founderSeats}`,
+        why: isUS
+          ? `Under DGCL the board controls CEO removal, M&A approval, and new equity issuances. With ${vcSeats} VC seats vs your ${founderSeats}, every major decision can be forced through without you.`
+          : `With ${vcSeats} VC seats vs your ${founderSeats} founder seats, VCs can remove the CEO, block any acquisition, and issue new shares that dilute you further — all without your vote.`,
+        nextStep: isUS
+          ? "Add to your next SHA negotiation: (1) founders nominate the independent director, (2) supermajority board consent (≥75%) required for CEO removal, (3) cap all future rounds at 1 observer seat only."
+          : "Add to your next SHA negotiation: (1) founders have the right to nominate the independent director, (2) unanimous board consent required for CEO removal, (3) future rounds get observer seats only — no new director rights.",
+        leverage: "Use competing term sheets or a down-round scenario to reopen governance terms.",
       });
     }
 
+    // ── Board tied ───────────────────────────────────────────────────────────
     if (vcSeats === founderSeats && vcSeats > 0) {
       recs.push({
-        action: `Board is tied ${founderSeats}-${vcSeats}: the independent director decides everything`,
-        impact: "Whoever nominates the independent director effectively controls your company",
-        detail: isUS
-          ? "Push for: founders nominate the independent director in the SHA. Independent must not be a GP or LP in any VC fund represented on the board (conflict check required under DGCL)."
-          : "Push for: founders have the right to nominate the independent director in the SHA. Independent must not be an LP in any VC fund on the board.",
+        priority: "high",
+        timing: "now",
+        action: `Board is ${founderSeats}–${vcSeats} tied — the independent director is the swing vote on everything`,
+        why: "A tied board means every contested decision — CEO comp, M&A, next round terms — is decided by whoever the independent director sides with. Most independents are former VCs or VC-network operators.",
+        nextStep: isUS
+          ? "Draft SHA clause this week: 'Founders shall have the right to nominate the independent director, subject to VC approval not to be unreasonably withheld.' Add a conflict-of-interest bar: the independent must not be a GP or LP in any fund on the board."
+          : "Draft SHA clause: 'Founders shall have the right to nominate the independent director.' Bar: independent must not be an LP in any fund represented on the board.",
+        leverage: "Raise this before the next round term sheet — it's easiest to fix when investors want the deal.",
       });
     }
 
     // ── Dual-class shares ────────────────────────────────────────────────────
     if (anyRoundsEnabled) {
       recs.push({
+        priority: founderPct < 51 ? "high" : "medium",
+        timing: "now",
         action: isUS
-          ? "Set up dual-class shares (Class A / Class B, 10:1 voting) in Delaware BEFORE your first priced round"
-          : "Set up dual-class shares (10:1 voting) BEFORE your first round closes",
-        impact: "Decouples equity dilution from voting control permanently",
-        detail: isUS
-          ? "Delaware C-Corps support dual-class structures natively (see Google, Meta, Snap). Class B shares give founders 10 votes each. Even at 15% equity you retain majority votes. Cannot be added retroactively after VCs invest."
-          : "Founders get Class B shares with 10 votes each. Even at 20% equity you retain 70%+ of votes. Cannot be done after VCs invest.",
+          ? "Set up dual-class shares (10:1 voting) in Delaware — must be done before first priced round closes"
+          : "Set up dual-class shares (DVR, 10:1 voting) — must be done before first round closes",
+        why: isUS
+          ? `Your founders are at ${founderPct.toFixed(1)}% equity. With dual-class, even at 15% equity you keep majority votes. Google, Meta, and Snap all use this structure. Once VCs invest, adding it requires unanimous shareholder consent — they will almost always say no.`
+          : `Your founders are at ${founderPct.toFixed(1)}% equity. With DVR shares (Class B, 10 votes each) under Companies Act Section 43, even at 20% equity you retain 70%+ of votes. After VCs invest, this requires unanimous consent — practically impossible.`,
+        nextStep: isUS
+          ? "Call a Delaware startup attorney this week. Ask for a dual-class recapitalisation: founders get Class B (10 votes), investors get Class A (1 vote). Cost: $5–15K. Timeline: 2–4 weeks. Do this before any term sheet is signed."
+          : "Engage a CA/CS this week. Ask for DVR share issuance under Section 43 before the first round SPA is signed. Cost: ₹50K–₹2L. Must be approved by shareholders and ROC-filed before allotment.",
       });
     }
 
     // ── Board seat cap ───────────────────────────────────────────────────────
     if (anyRoundsEnabled && vcSeats >= 1 && vcSeats < founderSeats + 1) {
       recs.push({
-        action: "Add a hard cap in your SHA: all VCs combined hold max 2 board seats ever",
-        impact: "Without this, each new round demands a seat — you lose board control by Series B",
-        detail: isUS
-          ? "SHA / IRA clause: 'All Investor Directors combined shall not exceed 2 seats at any time, regardless of future financing rounds.' Delaware courts enforce this."
-          : "SHA clause: 'All investor directors combined shall not exceed 2 seats at any time, regardless of future financing.'",
+        priority: "high",
+        timing: "next-round",
+        action: "Lock in a hard cap: all VCs combined ≤ 2 board seats, forever",
+        why: `You currently have ${vcSeats} VC seat${vcSeats > 1 ? "s" : ""}. Without a cap, every future lead investor will demand a seat — you'll lose board control by Series B without a single bad decision.`,
+        nextStep: isUS
+          ? "Insist on this IRA / SHA clause before the next term sheet is signed: 'All Investor Directors combined shall not exceed two (2) seats at any time, regardless of future financing rounds.' Delaware courts will enforce it."
+          : "Insist on this SHA clause: 'All investor directors combined shall not exceed two (2) seats at any time, regardless of future financings.' Have your lawyer add it to the SHA as a condition to closing.",
+        leverage: "Offer a broader information rights package (quarterly updates, board observer access) in exchange for the seat cap.",
       });
     }
 
     // ── Series A 2-seat risk ─────────────────────────────────────────────────
     if (state.rounds.a.enabled && state.rounds.a.board === "2") {
       recs.push({
-        action: "Reduce Series A VC board seats from 2 to 1",
-        impact: "Preserves founder board majority through Series B",
-        detail: "2 VC seats at Series A plus 1 at Series B = founders tied with VCs. The independent director becomes kingmaker.",
+        priority: "high",
+        timing: "next-round",
+        action: "Negotiate Series A VC board from 2 seats down to 1",
+        why: "2 VC seats at Series A + 1 at Series B = tied board. The independent director becomes kingmaker from Series B onward and you have no control over who that is.",
+        nextStep: "Counter the term sheet with 1 seat + 1 observer for the Series A lead. Offer enhanced information rights (monthly financials, budget approval visibility) as the trade. Most institutional VCs will accept if you ask early.",
+        leverage: "2 VC seats is not market standard at Series A in the US or India — use NVCA or YC safe harbour language to anchor the negotiation.",
       });
     }
 
     // ── Participating preferred ──────────────────────────────────────────────
     if (hasParticipatingPreferred) {
+      const fPayoutsBase = founderPayouts(latest, state.exitValue, false, false, {}, true);
+      const fPayoutsPref = founderPayouts(latest, state.exitValue, true, false, {}, true);
+      const baseTake = fPayoutsBase.reduce((s, f) => s + f.payout, 0);
+      const prefTake = fPayoutsPref.reduce((s, f) => s + f.payout, 0);
+      const lostM = baseTake - prefTake;
       recs.push({
-        action: "Remove participating preferred — negotiate non-participating across all rounds",
-        impact: "Participating preferred means VCs get their money back AND share the remaining exit — founders lose 20–40% of take-home",
-        detail: isUS
-          ? "Non-participating 1× is the NVCA standard in the US. Participating preferred has become rare post-2015 in Silicon Valley — cite this in negotiations."
-          : "This is the most founder-unfriendly term after board control. Standard market rate is non-participating at every stage.",
+        priority: "critical",
+        timing: "next-round",
+        action: "Strike participating preferred from every round — negotiate non-participating 1×",
+        why: `At a ${fmtM(state.exitValue)} exit, participating preferred costs founders ${fmtM(lostM)} compared to non-participating — VCs get their capital back AND share the upside. This is the single most value-destructive term after board control.`,
+        nextStep: isUS
+          ? "Counter every term sheet with: 'Non-participating preferred, 1× liquidation preference.' Cite NVCA Model Documents — participating preferred is rare post-2015 in US institutional rounds. Walk away from any deal that won't move off participating."
+          : "Cite the India market standard: non-participating at Seed, Series A, and beyond. Add to your SHA: 'Preference shares shall be non-participating. Investors elect either preference OR pro-rata common — not both.'",
+        leverage: `${fmtM(lostM)} is a concrete number to put in front of a VC — show them the exit waterfall. Most reasonable investors will concede once they see the founder outcome.`,
       });
     }
 
     // ── 2× preference ───────────────────────────────────────────────────────
     const hasAggressivePref = enabledRounds.some((k) => state.rounds[k].prefMult >= 2);
     if (hasAggressivePref) {
+      const aggressiveRounds = enabledRounds.filter((k) => state.rounds[k].prefMult >= 2).map((k) => ({ seed: "Seed", preseed: "Pre-seed", a: "Series A", b: "Series B", c: "Series C" }[k]));
       recs.push({
-        action: "Push back on 2× liquidation preference",
-        impact: "2× means VCs get double their money before founders see anything",
-        detail: "1× non-participating is the market standard globally. Anything above 1× is aggressive — use competing term sheets as leverage.",
+        priority: "critical",
+        timing: "next-round",
+        action: `Push back on 2× liquidation preference in ${aggressiveRounds.join(", ")}`,
+        why: `A 2× preference means investors get double their money back before founders see anything. If your exit is smaller than expected, founders walk away with nothing while VCs are made whole twice over. 1× non-participating is the global market standard.`,
+        nextStep: "Respond to the term sheet with: 'We'll accept 1× non-participating, standard market terms. We have another conversation ongoing and will move to whichever investor matches market.' Then actually run a competitive process — a single competing term sheet drops 2× to 1× in most cases.",
+        leverage: "Use Carta / Visible term sheet benchmarks to show 2× is an outlier — data wins this argument.",
       });
     }
 
-    // ── US-specific recommendations ──────────────────────────────────────────
+    // ── US-specific ──────────────────────────────────────────────────────────
     if (isUS) {
       recs.push({
-        action: "Flip to a Delaware C-Corp BEFORE closing with US VCs",
-        impact: "Most US institutional investors (YC, Sequoia US, a16z, General Catalyst) legally cannot invest in Indian-incorporated entities",
-        detail: "Engage a startup law firm for a 'flip' — the Indian entity becomes a wholly-owned subsidiary of a new Delaware C-Corp. Budget $30–50K in legal fees and 60–90 days lead time. Do this before your first US term sheet arrives.",
+        priority: "high",
+        timing: "now",
+        action: "If incorporated in India: flip to a Delaware C-Corp before your first US term sheet",
+        why: "Most US institutional investors (YC, Sequoia, a16z, General Catalyst) legally cannot invest in Indian entities due to fund LP restrictions. They will pass on your deal — not because they don't like you, but because their fund documents prohibit it.",
+        nextStep: "Engage Gunderson Dettmer, Cooley, or Wilson Sonsini this week. Ask for a 'redomiciliation flip' quote — Indian entity becomes a wholly-owned US subsidiary. Budget $30–50K legal, 60–90 days. Start before any term sheet so you don't lose a deal to timeline.",
+        leverage: "If you already have a Delaware entity, this does not apply — skip it.",
       });
-      recs.push({
-        action: "Use YC's post-money SAFE template — avoid custom SAFE terms",
-        impact: "Post-money SAFE fixes investor dilution; all future dilution (ESOP top-ups, bridge rounds) falls entirely on founders until the SAFE converts",
-        detail: "Download from ycombinator.com/documents. Insist on MFN (Most Favoured Nation) clause for earliest investors so they get the best cap if later SAFEs are cheaper. Avoid side letters that add hidden information rights or pro-rata obligations.",
-      });
-      recs.push({
-        action: "Get a 409A valuation within 12 months of each ESOP grant",
-        impact: "IRS requires a 409A for ISO grants. Skipping it means all options become NSOs — employees lose capital gains tax treatment worth $50K–$500K per senior hire",
-        detail: "Budget $5–15K per 409A from Carta, Capshare, or a Big 4 team. Trigger a new 409A after each priced round closes, after a material financing event, and annually. ISOs should go to US employees; NSOs to international team members.",
-      });
+      if (!state.safe.enabled) {
+        recs.push({
+          priority: "medium",
+          timing: "now",
+          action: "For angel / pre-seed rounds: use YC's post-money SAFE — avoid bespoke SAFE terms",
+          why: "Custom SAFEs often have ambiguous conversion mechanics and side letters that create hidden pro-rata obligations. Post-money SAFE fixes investor dilution at the cap; all ESOP top-up dilution falls on founders until conversion.",
+          nextStep: "Download the YC SAFE from ycombinator.com/documents. Use the post-money version with a valuation cap. Add MFN for your first cheque. Decline any requests for side letters with additional information rights or pro-rata beyond what the SAFE provides.",
+        });
+      }
+      const hasEsopRounds = enabledRounds.some((k) => state.rounds[k].esop > 0);
+      if (hasEsopRounds) {
+        recs.push({
+          priority: "high",
+          timing: "ongoing",
+          action: "Get a 409A valuation within 12 months of every ESOP grant — and refresh after each round",
+          why: "Without a 409A, the IRS classifies all options as NSOs. A senior engineer with 100K ISOs at a $200M exit loses ~$40K in tax treatment vs NSOs. You'll fail to attract top talent if your option plan isn't defensible.",
+          nextStep: "After this round closes, order a 409A from Carta, Capshare, or a Big 4 team ($5–15K). Put a recurring calendar reminder: refresh 409A annually and within 90 days of any material financing event. ISOs go to US employees; use NSOs for international hires.",
+        });
+      }
     } else {
-      // ── India-specific recommendations ──────────────────────────────────────
+      // ── India-specific ───────────────────────────────────────────────────
       recs.push({
-        action: "File FC-GPR with RBI within 30 days of every foreign VC allotment",
-        impact: "Non-filing attracts compounding penalties under FEMA — can block future rounds and exits",
-        detail: "Use an authorised dealer bank (HDFC, ICICI, Kotak). Price each share at or above FMV per SEBI DCF/NAV norms. Get a CS to handle allotment paperwork before funds arrive.",
+        priority: "high",
+        timing: "now",
+        action: "Confirm investor domicile before allotment — your compliance path is completely different",
+        why: "Indian VC (SEBI-registered AIF): standard board resolution + ROC filing, no RBI loop needed. Foreign VC (US, Singapore, Cayman): FEMA applies — FC-GPR mandatory within 30 days, pricing must be at or above FMV, funds must route through an authorised dealer bank.",
+        nextStep: "Before signing any SPA: (1) ask the VC for their SEBI AIF registration number OR confirm their legal domicile, (2) if foreign — appoint an AD bank (HDFC, ICICI, or Kotak) to receive funds, (3) get a CA/CS to handle the allotment and FC-GPR filing. Price shares using SEBI DCF/NAV norms and get a valuation certificate before allotment.",
+        leverage: "For Indian AIFs investing via GIFT City or offshore structures: domicile classification is not always obvious. Have your lawyer confirm before signing.",
       });
-      recs.push({
-        action: "Use CCDs (Compulsorily Convertible Debentures) for pre-seed, not equity",
-        impact: "CCDs defer FMV valuation requirements until conversion — cleaner than equity rounds for early cheques under ₹5Cr",
-        detail: "Interest rate must be arm's length (6–12% typical). Conversion terms trigger at Series A priced round. Avoid SAFEs for Indian-entity raises — RBI hasn't provided clear guidance on their treatment.",
-      });
+      const hasEarlyRounds = state.rounds.preseed.enabled || state.rounds.seed.enabled;
+      if (hasEarlyRounds) {
+        recs.push({
+          priority: "medium",
+          timing: "now",
+          action: "Consider CCDs instead of direct equity for pre-seed and seed rounds",
+          why: "Direct equity at early stages triggers FMV valuation requirements immediately. CCDs defer the FMV question until conversion — cleaner for sub-₹5Cr cheques and avoids a potentially ugly early valuation fight.",
+          nextStep: "Ask your CA to structure the instrument as CCDs with: (1) 6–10% interest rate (arm's length), (2) mandatory conversion trigger at the next priced equity round, (3) conversion ratio set at a discount to that round's pre-money price. Avoid SAFEs for Indian entities — RBI has not provided clear FEMA guidance for them.",
+        });
+      }
     }
 
     return recs;
-  }, [isUS, latest.vcSeats, founderSeats, anyRoundsEnabled, state.rounds, enabledRounds, hasParticipatingPreferred]);
+  }, [isUS, latest, founderSeats, founderPct, anyRoundsEnabled, state.rounds, state.exitValue, state.usePref, enabledRounds, hasParticipatingPreferred, state.safe.enabled]);
 
   // Line chart data with dynamic Y max (BUG FIX 2)
   const lineData = snapKeys.map((k) => {
@@ -466,9 +526,15 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
           <div className="text-[11px] text-muted-foreground">F:{fSeatPct}% V:{vSeatPct}% I:{iSeatPct}%</div>
         </Card>
         <Card className="p-3">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Total VC Stake</div>
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Total Investor Stake</div>
           <div className="text-2xl font-extrabold mt-1">{vcPct.toFixed(1)}%</div>
-          <div className="text-[11px] text-muted-foreground">{latest.vcNames.length ? latest.vcNames.join(", ") : "No rounds yet"}</div>
+          <div className="text-[11px] text-muted-foreground">
+            {(() => {
+              const names = [...latest.vcNames];
+              if (latest.holders.some((h) => h.type === "safe")) names.unshift("SAFE");
+              return names.length ? names.join(", ") : "No rounds yet";
+            })()}
+          </div>
         </Card>
       </div>
 
@@ -488,7 +554,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
           onCheckedChange={(v) => {
             setExpertMode(v);
             if (!v && (activeTab === "veto" || activeTab === "protect")) {
-              setActiveTab("rounds");
+              setActiveTab("captable");
             }
           }}
         />
@@ -501,9 +567,9 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
       }} className="w-full">
         <div className="overflow-x-auto -mx-1 px-1 pb-1">
           <TabsList className="flex w-max min-w-full h-auto gap-1 p-1">
+            <TabsTrigger value="setup" className="flex-shrink-0 text-xs px-3 py-2">👥 Setup</TabsTrigger>
             <TabsTrigger value="rounds" className="flex-shrink-0 text-xs px-3 py-2">⚙️ Rounds</TabsTrigger>
-            <TabsTrigger value="captable" className="flex-shrink-0 text-xs px-3 py-2">📋 Cap Table</TabsTrigger>
-            <TabsTrigger value="board" className="flex-shrink-0 text-xs px-3 py-2">🏛️ Board</TabsTrigger>
+            <TabsTrigger value="captable" className="flex-shrink-0 text-xs px-3 py-2">📋 Cap Table & Board</TabsTrigger>
             <TabsTrigger value="veto" className={cn("flex-shrink-0 text-xs px-3 py-2", !expertMode && "opacity-30 pointer-events-none")}>🛡️ Veto</TabsTrigger>
             <TabsTrigger value="protect" className={cn("flex-shrink-0 text-xs px-3 py-2", !expertMode && "opacity-30 pointer-events-none")}>🔒 Protect</TabsTrigger>
             <TabsTrigger value="exit" className="flex-shrink-0 text-xs px-3 py-2">💰 Exit</TabsTrigger>
@@ -511,8 +577,8 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
           </TabsList>
         </div>
 
-        {/* ── ROUNDS ── */}
-        <TabsContent value="rounds" className="space-y-3 mt-4">
+        {/* ── SETUP ── */}
+        <TabsContent value="setup" className="space-y-3 mt-4">
 
           {/* Market toggle */}
           <div className="flex items-center gap-1 rounded-xl bg-muted p-1">
@@ -565,7 +631,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             </div>
           )}
 
-          {/* Founder seats config (BUG FIX 3) */}
+          {/* Founder seats */}
           <Card className="p-4">
             <div className="flex items-center gap-1.5 mb-1">
               <Label className="text-xs font-semibold">Number of founder board directors</Label>
@@ -576,7 +642,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   </TooltipTrigger>
                   <TooltipContent className="max-w-[220px] text-xs">
                     <p className="font-bold text-primary mb-1">Founder Directors</p>
-                    <p>How many board seats founders control. This flows into board control, voting power, and “safe / tied / lost” recommendations across rounds.</p>
+                    <p>How many board seats founders control. This flows into board control, voting power, and "safe / tied / lost" recommendations across rounds.</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -695,45 +761,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             )}
           </Card>
 
-          {/* SECTION A — Insight Engine */}
-          <Card className="p-4 bg-[#1a1a2e] text-white">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-white/70 mb-2">
-              📊 Founder Outcome Summary
-            </div>
-            <div className="text-sm font-semibold leading-snug">
-              {!anyRoundsEnabled ? (
-                "Enable funding rounds below to see your outcome summary."
-              ) : (
-                <>
-                  At current plan, founders end with {founderPct.toFixed(1)}% equity across {roundsEnabledCount}{" "}
-                  round{roundsEnabledCount === 1 ? "" : "s"}, and take home ~{fmtM(perFounderAmt)} each at a{" "}
-                  {fmtM(state.exitValue)} exit.
-                </>
-              )}
-            </div>
-
-            {!!riskSignals.length && (
-              <div className="mt-3 space-y-2">
-                {riskSignals.map((s, i) => {
-                  const dotCls =
-                    s.tone === "red"
-                      ? "bg-red-500"
-                      : s.tone === "orange"
-                        ? "bg-orange-500"
-                        : s.tone === "yellow"
-                          ? "bg-yellow-400"
-                          : "bg-emerald-400";
-                  return (
-                    <div key={i} className="flex items-start gap-2 text-xs text-white/90">
-                      <span className={cn("mt-1 h-2.5 w-2.5 rounded-full", dotCls)} />
-                      <span>{s.text}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </Card>
-
+          {/* SAFE / Convertible Note */}
           {expertMode && <Card className="p-4">
             <div className="flex items-center gap-3 mb-3">
               <span className="text-xl">📝</span>
@@ -753,7 +781,6 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                     : "SAFEs convert to equity at your first priced round. In India, CCDs (Compulsorily Convertible Debentures) are the more common equivalent for RBI compliance."}
                 </div>
 
-                {/* MFN / No-cap toggle */}
                 <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
                   <div>
                     <div className="text-xs font-semibold">MFN / No cap (YC standard)</div>
@@ -766,7 +793,6 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   />
                 </div>
 
-                {/* YC quick-fill */}
                 {isUS && (
                   <button
                     disabled={readOnly}
@@ -890,7 +916,6 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                     Single-trigger acceleration fully vests founders at acquisition.
                   </div>
 
-                  {/* Acceleration toggle */}
                   <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
                     <div>
                       <div className="text-xs font-semibold">Single-trigger acceleration at exit</div>
@@ -905,7 +930,6 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                     />
                   </div>
 
-                  {/* Per-founder vesting rows */}
                   {founderOnlyHolders.map((f) => {
                     const v = state.vesting?.[f.name] ?? DEFAULT_VESTING;
                     const vFrac = v.elapsedMonths < v.cliffMonths ? 0 : Math.min(1, v.elapsedMonths / v.vestMonths);
@@ -960,7 +984,6 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                             />
                           </div>
                         </div>
-                        {/* vesting progress bar */}
                         <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                           <div
                             className="h-full rounded-full bg-primary transition-all"
@@ -974,6 +997,65 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
               )}
             </Card>
           )}
+
+          {/* CTA nudge to configure rounds */}
+          <div className="rounded-xl border border-dashed border-border px-4 py-3 text-xs text-muted-foreground text-center">
+            Setup complete? Head to <button className="font-semibold text-primary underline-offset-2 underline" onClick={() => setActiveTab("rounds")}>⚙️ Rounds</button> to model your funding path.
+          </div>
+
+        </TabsContent>
+
+        {/* ── ROUNDS ── */}
+        <TabsContent value="rounds" className="space-y-3 mt-4">
+
+          {/* Market badge — read-only indicator, click goes to Setup */}
+          <button
+            onClick={() => setActiveTab("setup")}
+            className="flex items-center gap-2 rounded-lg border border-border bg-muted/60 px-3 py-1.5 text-xs font-semibold hover:bg-muted transition-colors w-full"
+          >
+            <span>{isUS ? "🇺🇸" : "🇮🇳"}</span>
+            <span>{isUS ? "United States" : "India"} mode</span>
+            <span className="ml-auto text-muted-foreground">← change in Setup</span>
+          </button>
+
+          {/* SECTION A — Insight Engine */}
+          <Card className="p-4 bg-[#1a1a2e] text-white">
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-white/70 mb-2">
+              📊 Founder Outcome Summary
+            </div>
+            <div className="text-sm font-semibold leading-snug">
+              {!anyRoundsEnabled ? (
+                "Enable funding rounds below to see your outcome summary."
+              ) : (
+                <>
+                  At current plan, founders end with {founderPct.toFixed(1)}% equity across {roundsEnabledCount}{" "}
+                  round{roundsEnabledCount === 1 ? "" : "s"}, and take home ~{fmtM(perFounderAmt)} each at a{" "}
+                  {fmtM(state.exitValue)} exit.
+                </>
+              )}
+            </div>
+
+            {!!riskSignals.length && (
+              <div className="mt-3 space-y-2">
+                {riskSignals.map((s, i) => {
+                  const dotCls =
+                    s.tone === "red"
+                      ? "bg-red-500"
+                      : s.tone === "orange"
+                        ? "bg-orange-500"
+                        : s.tone === "yellow"
+                          ? "bg-yellow-400"
+                          : "bg-emerald-400";
+                  return (
+                    <div key={i} className="flex items-start gap-2 text-xs text-white/90">
+                      <span className={cn("mt-1 h-2.5 w-2.5 rounded-full", dotCls)} />
+                      <span>{s.text}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
 
           {ROUND_KEYS.map((k) => {
             const r = state.rounds[k];
@@ -1215,29 +1297,65 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             );
           })}
 
-          {/* SECTION B — Recommendations Card */}
+          {/* SECTION B — Founder Playbook */}
           <Card className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="font-bold text-sm">🧭 Recommended Actions</div>
-              <Badge className="bg-primary/10 text-primary border border-primary/30">{recommendations.length}</Badge>
+            <div className="flex items-center justify-between mb-1">
+              <div className="font-bold text-sm">🧭 Founder Playbook</div>
+              <Badge className="bg-primary/10 text-primary border border-primary/30">{recommendations.length} actions</Badge>
             </div>
+            <p className="text-xs text-muted-foreground mb-4">Personalised to your current scenario. Each action includes the exact next step to take.</p>
             {recommendations.length === 0 ? (
-              <div className="text-sm text-muted-foreground">Enable funding rounds above to see recommendations.</div>
+              <div className="text-sm text-muted-foreground">Enable funding rounds above to see your playbook.</div>
             ) : (
-              <div className="space-y-4">
-                {recommendations.map((r, idx) => (
-                  <div key={idx} className="flex gap-3">
-                    <div className="w-7 h-7 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-sm shrink-0">
-                      {idx + 1}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-bold text-sm leading-snug">{r.action}</div>
-                      <div className="text-sm text-indigo-600/90 mt-0.5">{r.impact}</div>
-                      <div className="text-xs text-muted-foreground mt-1">{r.detail}</div>
-                    </div>
+              (() => {
+                const timingGroups: Array<{ key: "now" | "next-round" | "ongoing"; label: string; icon: string; borderColor: string; bgColor: string }> = [
+                  { key: "now",        label: "Do Now",             icon: "🔴", borderColor: "border-red-300",    bgColor: "bg-red-50 dark:bg-red-950/30" },
+                  { key: "next-round", label: "Before Next Round",  icon: "🟡", borderColor: "border-amber-300",  bgColor: "bg-amber-50 dark:bg-amber-950/30" },
+                  { key: "ongoing",    label: "Ongoing",            icon: "🔵", borderColor: "border-blue-300",   bgColor: "bg-blue-50 dark:bg-blue-950/30" },
+                ];
+                const priorityBadge = (p: string) => {
+                  if (p === "critical") return <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300">Critical</span>;
+                  if (p === "high")     return <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">High</span>;
+                  return                       <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">Medium</span>;
+                };
+                return (
+                  <div className="space-y-5">
+                    {timingGroups.map(({ key, label, icon, borderColor, bgColor }) => {
+                      const group = recommendations.filter((r) => r.timing === key);
+                      if (group.length === 0) return null;
+                      return (
+                        <div key={key}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-sm">{icon}</span>
+                            <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
+                            <div className="flex-1 h-px bg-border" />
+                          </div>
+                          <div className="space-y-3">
+                            {group.map((r, idx) => (
+                              <div key={idx} className={cn("rounded-xl border p-3.5 space-y-2.5", borderColor, bgColor)}>
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="font-bold text-sm leading-snug flex-1">{r.action}</div>
+                                  {priorityBadge(r.priority)}
+                                </div>
+                                <div className="text-xs text-foreground/80 leading-relaxed">{r.why}</div>
+                                <div className={cn("rounded-lg p-2.5 border", key === "now" ? "bg-white/70 border-red-200 dark:bg-black/20 dark:border-red-800" : key === "next-round" ? "bg-white/70 border-amber-200 dark:bg-black/20 dark:border-amber-800" : "bg-white/70 border-blue-200 dark:bg-black/20 dark:border-blue-800")}>
+                                  <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">→ Next Step</div>
+                                  <div className="text-xs leading-relaxed">{r.nextStep}</div>
+                                </div>
+                                {r.leverage && (
+                                  <div className="text-[11px] text-muted-foreground italic leading-relaxed">
+                                    💡 <span className="font-semibold">Leverage: </span>{r.leverage}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
+                );
+              })()
             )}
           </Card>
         </TabsContent>
@@ -1310,10 +1428,12 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
               </ResponsiveContainer>
             </div>
           </Card>
-        </TabsContent>
 
-        {/* ── BOARD ── */}
-        <TabsContent value="board" className="space-y-3 mt-4">
+          {/* ── Board section ── */}
+          <div className="flex items-center gap-2 pt-1">
+            <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">🏛️ Board Composition</span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
           {snapKeys.map((k) => {
             const snap = snaps[k];
             const total = founderSeats + 1 + snap.vcSeats;
@@ -1365,95 +1485,213 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             </div>
 
             {(() => {
-              const vetoItems: Array<{
-                key: string;
-                title: string;
-                active: boolean;
-                demand: string;
-                push: string;
-                clause: string;
-              }> = [
+              type VetoItem = { key: string; title: string; active: boolean; market: "both" | "india" | "us"; demand: string; push: string; clause: string };
+              const vetoItems: VetoItem[] = ([
+                // ── Universal ──────────────────────────────────────────────
                 {
                   key: "equity",
                   title: "New equity issuance approval",
                   active: state.rounds.seed.enabled,
-                  demand: "Approval required for any new share issuance, including to advisors or employees.",
-                  push: "Carve out: ESOP grants under board-approved plan, advisor grants under $25K, exercises of existing options. Only new round-level issuances need VC approval.",
-                  clause: "Deemed approved if VC does not respond in writing within 10 business days of notice.",
+                  market: "both",
+                  demand: "Approval required for any new share issuance — including to advisors, employees, or in bridge rounds.",
+                  push: "Carve out: (1) ESOP grants within board-approved plan, (2) advisor grants below the pre-agreed threshold, (3) exercises of existing options. Only new round-level issuances should require VC approval.",
+                  clause: "Deemed approved if VC does not respond in writing within 10 business days of written notice.",
                 },
                 {
                   key: "exec",
                   title: "CEO / executive hiring & firing",
                   active: state.rounds.a.enabled,
-                  demand: "VC approval required to hire or remove CEO and all C-suite.",
-                  push: "Limit to CEO and CFO only. CEO removal requires 4/5 board votes. Define 'For Cause' narrowly: fraud, criminal conviction, gross negligence.",
-                  clause: "Founders removed without Cause receive 6-month salary + full acceleration of unvested equity.",
+                  market: "both",
+                  demand: "VC approval required to hire or remove CEO and all C-suite roles.",
+                  push: "Limit veto to CEO and CFO only. Require 4/5 board votes to remove CEO. Define 'For Cause' narrowly: fraud, criminal conviction, or gross negligence — not 'underperformance'.",
+                  clause: isUS
+                    ? "CEO removal without Cause triggers 12-month salary, COBRA coverage, and full single-trigger acceleration of unvested equity."
+                    : "Founders removed without Cause receive 6-month salary and full acceleration of unvested equity.",
                 },
                 {
                   key: "mna",
-                  title: "Acquisitions above $500K",
+                  title: isUS ? "Acquisitions above $500K" : "Acquisitions above ₹4Cr (~$500K)",
                   active: state.rounds.a.enabled,
-                  demand: "Any acquisition above $500K requires VC approval.",
-                  push: "Raise threshold to $2M. Carve out acqui-hires under $750K.",
-                  clause: "VC must respond within 15 business days or acquisition is deemed approved.",
+                  market: "both",
+                  demand: isUS
+                    ? "Any acquisition above $500K requires VC approval."
+                    : "Any acquisition above ₹4Cr (~$500K) requires VC approval.",
+                  push: isUS
+                    ? "Raise threshold to $2M. Carve out acqui-hires under $750K (talent acquisitions with no product transfer)."
+                    : "Raise threshold to ₹15Cr (~$2M). Carve out acqui-hires under ₹6Cr. Require VC response within 20 business days.",
+                  clause: "VC must respond in writing within 15 business days of notice, or acquisition is deemed approved.",
                 },
                 {
                   key: "debt",
-                  title: "New debt above $250K",
+                  title: isUS ? "New debt above $250K" : "New debt above ₹2Cr (~$250K)",
                   active: state.rounds.seed.enabled,
-                  demand: "Any new borrowing above $250K requires VC sign-off.",
-                  push: "Raise threshold to $1M. Carve out working capital revolving credit lines, equipment financing under $500K, government-backed loans.",
-                  clause: "Pre-approved for credit facilities disclosed in SHA schedule.",
+                  market: "both",
+                  demand: isUS
+                    ? "Any new borrowing above $250K requires VC sign-off."
+                    : "Any new borrowing above ₹2Cr requires VC sign-off.",
+                  push: isUS
+                    ? "Raise threshold to $1M. Carve out: revolving credit lines, equipment financing under $500K, government-backed loans (SBA, etc.)."
+                    : "Raise threshold to ₹8Cr. Carve out: working capital revolvers, equipment financing under ₹4Cr, government-backed loans (MUDRA, SIDBI).",
+                  clause: "Pre-approved for credit facilities and their renewals as disclosed in the SHA schedule.",
                 },
                 {
                   key: "related",
                   title: "Related party transactions",
                   active: state.rounds.seed.enabled,
-                  demand: "Any transaction with founders or affiliated entities needs consent.",
-                  push: "Carve out: employment agreements approved by board, expense reimbursements under $10K, arm's-length transactions.",
-                  clause: "Board audit committee certification sufficient for transactions under $100K.",
+                  market: "both",
+                  demand: "Any transaction between the company and founders, their family, or affiliated entities requires VC consent.",
+                  push: "Carve out: (1) employment agreements approved by the board, (2) expense reimbursements under ₹10L / $10K, (3) arm's-length transactions at market rate certified by auditor.",
+                  clause: "Board audit committee certification sufficient for transactions under ₹1Cr / $100K. VC consent needed above that threshold.",
                 },
                 {
                   key: "windup",
-                  title: "Liquidation / winding up",
+                  title: "Voluntary liquidation / winding up",
                   active: state.rounds.seed.enabled,
-                  demand: "VC must consent to any voluntary liquidation.",
-                  push: "Accept this — it's standard. But push back: requires 75%+ shareholder vote, not a VC unilateral right.",
-                  clause: "No single investor can force wind-up without 75% shareholder approval regardless of ownership %.",
+                  market: "both",
+                  demand: "VC must consent to any voluntary liquidation, dissolution, or cessation of business.",
+                  push: "Accept this — it's standard. But push back on unilateral VC right to force wind-up: that must require 75%+ shareholder vote.",
+                  clause: "No single investor or investor class can force wind-up without approval of 75% of all shareholders by value, regardless of ownership percentage.",
                 },
                 {
                   key: "amend",
-                  title: "Amendment of SHA / AoA",
+                  title: isUS ? "Amendment of Charter / IRA / SHA" : "Amendment of SHA / AoA",
                   active: state.rounds.a.enabled,
-                  demand: "Any SHA or AoA change requires VC consent.",
-                  push: "VC consent only for amendments affecting VC-specific rights. Administrative changes need 75% shareholder vote only.",
-                  clause: "Changes to board composition, liquidation preferences, or anti-dilution require VC consent. All others require 75% shareholder approval.",
+                  market: "both",
+                  demand: isUS
+                    ? "Any amendment to the Certificate of Incorporation, IRA, or SHA requires VC preferred stockholder approval."
+                    : "Any amendment to the SHA or Articles of Association (AoA) requires VC consent.",
+                  push: isUS
+                    ? "VC consent only for amendments that directly affect preferred stock rights. All other changes require 75% common + preferred shareholder vote."
+                    : "VC consent only for amendments affecting VC-specific rights (liquidation preference, anti-dilution, board seats). Administrative AoA changes need 75% shareholder vote only.",
+                  clause: isUS
+                    ? "Amendments to Sections [X] (liquidation preference), [Y] (anti-dilution), and [Z] (board rights) require preferred approval. All others require 75% shareholder vote."
+                    : "Amendments to SHA Clauses [X] (liquidation preference), [Y] (anti-dilution), and [Z] (board composition) require VC consent. All others require 75% shareholder approval.",
                 },
                 {
                   key: "esop",
-                  title: "ESOP pool increase",
+                  title: "ESOP / option pool increase",
                   active: state.rounds.a.enabled,
-                  demand: "Any ESOP increase above current level needs VC approval.",
-                  push: "Pre-agree an ESOP schedule in the SHA. Increases within schedule need board approval only.",
-                  clause: "ESOP increases within pre-agreed SHA schedule require board approval only.",
+                  market: "both",
+                  demand: "Any ESOP pool increase above the current board-approved level requires VC approval.",
+                  push: "Pre-agree a multi-year ESOP schedule (e.g., 12% now, up to 18% total by Series B) in the SHA. Increases within the schedule need board approval only — no VC veto.",
+                  clause: "ESOP increases within the pre-agreed SHA schedule require board approval only. Increases beyond the schedule require VC consent within 10 business days.",
                 },
                 {
                   key: "ipo",
                   title: "IPO decision",
                   active: state.rounds.b.enabled,
-                  demand: "VCs must approve any IPO filing.",
-                  push: "After 5 years, founders can initiate IPO with 51% shareholder vote. VCs cannot veto IPO achieving ≥3× their invested capital.",
-                  clause: "VC consent not required if: ≥5 years since investment, IPO at ≥3× cost basis, and 51% of shareholders approve.",
+                  market: "both",
+                  demand: "VCs must approve any IPO filing, choice of exchange, and banker selection.",
+                  push: "After 5 years from first close, founders can initiate IPO with 51% shareholder approval. VCs cannot veto an IPO that achieves ≥3× their cost basis.",
+                  clause: isUS
+                    ? "Preferred stockholder approval not required for IPO if: (i) ≥5 years since first investment, (ii) IPO price ≥3× Series A cost basis, and (iii) 51% of shareholders approve."
+                    : "VC consent not required for IPO if: (i) ≥5 years since first investment, (ii) IPO price ≥3× Series A cost basis, and (iii) 51% of shareholders by value approve.",
                 },
                 {
                   key: "div",
                   title: "Dividend declaration",
                   active: state.rounds.seed.enabled,
-                  demand: "No dividends without VC approval.",
-                  push: "Accept it — standard. Push for carve-out: board-approved bonuses and salary increases are not dividends.",
-                  clause: "Performance bonuses approved by board compensation committee are explicitly excluded.",
+                  market: "both",
+                  demand: "No dividends of any kind without VC approval.",
+                  push: "Accept it — it's standard. Push for one carve-out: board-approved performance bonuses and salary increases paid to employees (including founders) are explicitly not dividends.",
+                  clause: "Performance bonuses and salary increases approved by the board compensation committee are explicitly excluded from the dividend restriction.",
                 },
-              ];
+                {
+                  key: "rofr",
+                  title: "Right of First Refusal on founder share sales",
+                  active: state.rounds.seed.enabled,
+                  market: "both",
+                  demand: "If any founder wants to sell shares to a third party, the company and then VCs have the right to buy those shares first at the same price.",
+                  push: isUS
+                    ? "Accept ROFR but limit it: (1) ROFR waived for transfers to founder's family trust or wholly-owned entity, (2) ROFR expires after IPO, (3) VCs must exercise within 10 business days or right lapses."
+                    : "Accept ROFR but limit it: (1) ROFR waived for transfers to family trust or wholly-owned entity, (2) ROFR expires on IPO or trade sale, (3) VCs must exercise within 20 business days.",
+                  clause: isUS
+                    ? "ROFR lapses if not exercised in writing within 10 business days of notice. Permitted transfers to founder's living trust or immediate family are exempt."
+                    : "ROFR lapses if not exercised in writing within 20 business days of notice. Intra-family and estate-planning transfers are exempt.",
+                },
+                {
+                  key: "drag",
+                  title: "Drag-along rights",
+                  active: state.rounds.a.enabled,
+                  market: "both",
+                  demand: "If VCs holding X% of shares approve a sale of the company, they can force all other shareholders (including founders) to sell at the same price and terms.",
+                  push: isUS
+                    ? "Push for: (1) drag requires approval of ≥75% of all shareholders (not just preferred), (2) drag price must be ≥ the original Series A price, (3) founders are not dragged below their liquidation preference floor."
+                    : "Push for: (1) drag requires ≥75% shareholder approval by value, (2) drag price must ≥ the last round post-money valuation, (3) founder employment contracts survive the drag.",
+                  clause: isUS
+                    ? "Drag-along right requires approval of: (i) a majority of the board including at least one founder director, (ii) ≥75% of preferred stockholders, and (iii) ≥51% of common stockholders."
+                    : "Drag-along right requires approval of: (i) board resolution with founder director approval, (ii) ≥75% of preference shareholders, and (iii) ≥51% of equity shareholders by value.",
+                },
+                {
+                  key: "bizchange",
+                  title: "Change of principal business activity",
+                  active: state.rounds.a.enabled,
+                  market: "both",
+                  demand: "Any material pivot away from the core business described in the SHA requires VC consent.",
+                  push: "Define 'material change' narrowly: only applies to entering a completely different industry vertical. Adjacent product expansion, new geographies, and new customer segments are explicitly exempt.",
+                  clause: "Change of principal business means shifting to a primary revenue activity unrelated to [defined business description]. Board-approved product pivots within the same technology domain are not a change of principal business.",
+                },
+                {
+                  key: "keyman",
+                  title: "Key man / founder departure provisions",
+                  active: state.rounds.a.enabled,
+                  market: "both",
+                  demand: isUS
+                    ? "If the CEO or a named key person leaves, VCs may have the right to suspend new investment tranches, call special meetings, or trigger mandatory buyback of unvested shares."
+                    : "If the CEO or named key persons leave, VCs may have the right to suspend drawdowns, accelerate conversion of preference shares, or demand a buyback of unvested founder shares.",
+                  push: "Limit key man to CEO only (not all co-founders). Key man suspension is limited to 90 days to find a replacement approved by the board. Key man does NOT trigger drag-along or preference conversion.",
+                  clause: isUS
+                    ? "Key man event means departure of the named CEO only. Company has 90 days to appoint a board-approved replacement. Key man does not trigger drag-along, redemption rights, or any anti-dilution adjustment."
+                    : "Key man event means voluntary departure of the CEO only. Company has 90 days to appoint a board-approved replacement. Key man event does not trigger preference share conversion, drag-along, or redemption rights.",
+                },
+                // ── India-specific ─────────────────────────────────────────
+                {
+                  key: "prefconv",
+                  title: "Conversion timing of preference shares / CCDs",
+                  active: state.rounds.seed.enabled,
+                  market: "india",
+                  demand: "VCs control when preference shares or CCDs convert to equity — including the right to delay conversion if conversion would be dilutive to their returns.",
+                  push: "Specify mandatory conversion triggers in the SHA: (1) qualified IPO, (2) trade sale above agreed floor valuation, (3) at VC's election after 5 years. Prohibit VC-triggered conversion without corresponding liquidation event.",
+                  clause: "Compulsory conversion occurs on: (i) qualified IPO at price ≥ 2× subscription price, (ii) trade sale at aggregate valuation ≥ ₹[X]Cr, or (iii) VC election after 60 months from allotment. Conversion price floor = subscription price.",
+                },
+                {
+                  key: "auditor",
+                  title: "Change of statutory auditor",
+                  active: state.rounds.seed.enabled,
+                  market: "india",
+                  demand: "Appointment or change of statutory auditor (as required under Companies Act 2013) requires VC consent — VCs want a Big 4 or recognised firm auditing their investment.",
+                  push: "Accept that a recognised statutory auditor is required, but push: (1) initial auditor choice is a founder decision at pre-seed, (2) from Seed onward, VC approval is only required if switching to a non-Big 4 / non-recognised firm, (3) auditor change for cost reasons must be pre-approved in annual budget.",
+                  clause: "Change of statutory auditor requires board approval. Switch to a firm not in the pre-agreed approved list (to be annexed to SHA) requires VC consent. Annual auditor reappointment does not require VC consent.",
+                },
+                // ── US-specific ────────────────────────────────────────────
+                {
+                  key: "qsbs",
+                  title: "QSBS eligibility — Section 1202 protection",
+                  active: state.rounds.seed.enabled,
+                  market: "us",
+                  demand: "VCs will veto any corporate action that could disqualify their shares from Section 1202 QSBS tax treatment — worth up to $10M per investor in tax-free gains on exit.",
+                  push: "This is largely in founders' interest too. Push to add a QSBS compliance covenant: company will provide written notice before any action that could breach QSBS requirements (>$50M gross assets, non-qualified business type, stock repurchases within 2 years of issuance).",
+                  clause: "Company shall provide written notice to all investors at least 30 days prior to any action that would cause the company's stock to cease to qualify as QSBS under Section 1202 of the IRC.",
+                },
+                {
+                  key: "repurchase",
+                  title: "Stock repurchase (NVCA standard)",
+                  active: state.rounds.seed.enabled,
+                  market: "us",
+                  demand: "No repurchase or redemption of any company stock without preferred stockholder approval — standard NVCA Model Protective Provision.",
+                  push: "Accept the restriction but negotiate carve-outs: (1) repurchases pursuant to equity incentive agreements at cost (leavers), (2) repurchases at board-approved prices from terminated employees, (3) any repurchase where preferred stockholders are offered the same terms.",
+                  clause: "Company may repurchase securities without preferred stockholder approval only: (i) pursuant to equity incentive plan repurchase rights at not more than cost, or (ii) pursuant to board-approved buybacks offered pro-rata to all stockholders.",
+                },
+                {
+                  key: "authshares",
+                  title: "Authorized share class increase (Delaware)",
+                  active: state.rounds.a.enabled,
+                  market: "us",
+                  demand: "Any increase in the number of authorized shares in the Certificate of Incorporation requires preferred stockholder approval — VCs use this to control future dilution.",
+                  push: "Negotiate a pre-approved 'authorized headroom' in the initial Certificate: authorize 2–3× the current issued shares so routine ESOP grants and bridge rounds don't trigger this veto. Future increases beyond headroom require approval.",
+                  clause: "Certificate of Incorporation to authorize [X] shares initially, representing approximately 3× current issued shares. Subsequent amendments to increase authorization require approval of holders of ≥60% of preferred stock, voting as a separate class.",
+                },
+              ] as VetoItem[]).filter((it) => it.market === "both" || (isUS ? it.market === "us" : it.market === "india"));
 
               return (
                 <div className="mt-4">
@@ -1503,28 +1741,140 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
           </Card>
 
           <Card className="p-4">
-            <div className="font-bold text-sm mb-3">🎯 Key Ownership Thresholds</div>
+            <div className="font-bold text-sm mb-1">🎯 Key Ownership Thresholds</div>
+            <div className="text-xs text-muted-foreground mb-4">Tap any threshold to see exactly what powers change hands when it is crossed.</div>
             {(() => {
-              const checks = [
-                { label: "Founders supermajority (75%)", ok: founderPct > 75, current: founderPct, goodText: "SAFE", badText: "BREACHED" },
-                { label: "Founders simple majority (51%)", ok: founderPct > 51, current: founderPct, goodText: "SAFE", badText: "BREACHED" },
-                { label: "VC blocking minority (26%)", ok: vcPct < 26, current: vcPct, goodText: "SAFE", badText: "BREACHED" },
-                { label: "VC majority risk (50%)", ok: vcPct < 40, current: vcPct, goodText: "SAFE", badText: "BREACHED" },
+              const thresholds = [
+                {
+                  key: "t75",
+                  label: "Founders supermajority",
+                  threshold: "75%",
+                  ok: founderPct > 75,
+                  current: founderPct,
+                  who: "founders",
+                  meaning: isUS
+                    ? "Under DGCL and most VCs' Voting Agreements, a 75% supermajority is required for major structural changes — Charter amendments, mergers, dissolution, and new share class creation all fall here."
+                    : "Under the Companies Act 2013, special resolutions require 75% of votes cast. These cover: AoA amendments, mergers, change of company name, capital reduction, winding up, and any new share class with different rights.",
+                  whenSafe: "Founders can pass special resolutions unilaterally — including AoA/Charter amendments, structural changes, and major transactions — without requiring VC support.",
+                  whenBreached: isUS
+                    ? "VCs holding >25% can block any Charter amendment, merger, dissolution, or new share class. You cannot restructure the company, set up dual-class shares, or wind up without their consent."
+                    : "Any VC holding >25% can single-handedly block all special resolutions. This means no AoA amendments, no mergers, no capital restructuring, no winding up — without their blessing. This is the most powerful blocking right in Indian company law.",
+                  marketNote: isUS ? null : "India-specific: the 75%/25% threshold is hard-coded into the Companies Act. Unlike contractual rights, it cannot be waived by SHA — it is always in effect regardless of what the SHA says.",
+                },
+                {
+                  key: "t51",
+                  label: "Founders simple majority",
+                  threshold: "51%",
+                  ok: founderPct > 51,
+                  current: founderPct,
+                  who: "founders",
+                  meaning: isUS
+                    ? "Ordinary resolutions in the US require a simple majority of votes cast. These cover day-to-day governance: approving financial statements, electing directors at shareholder meetings, and approving most standard transactions."
+                    : "Ordinary resolutions under Companies Act 2013 need >50% of votes cast. They cover: approval of financial accounts, appointment / removal of non-executive directors, related-party transactions above certain thresholds, and routine approvals.",
+                  whenSafe: "Founders can independently pass all ordinary resolutions — routine approvals, financial accounts, director appointments — without needing VC votes. Company governance runs on founder terms.",
+                  whenBreached: isUS
+                    ? "VCs can combine to pass ordinary resolutions without founders. They can approve related-party transactions, remove non-executive directors, and block annual accounts. They cannot yet run the company but can create significant friction in day-to-day governance."
+                    : "VCs can pass ordinary resolutions without founders — approving accounts, appointing auditors, approving transactions with VC-affiliated entities, removing directors at the shareholder level. Founders lose the ability to approve anything without VC support.",
+                  marketNote: null,
+                },
+                {
+                  key: "t26",
+                  label: "VC blocking minority",
+                  threshold: "26%",
+                  ok: vcPct < 26,
+                  current: vcPct,
+                  who: "vcs",
+                  meaning: isUS
+                    ? "Once VCs hold >25% of voting shares (or have contractual protective provisions), they can block most major structural changes under the SHA and Voting Agreement even without holding a majority."
+                    : "This is the most important threshold in Indian company law. Once any investor (or group acting in concert) crosses 26%, they can block ALL special resolutions — permanently — regardless of what the SHA says, because the Companies Act is a statutory right that overrides contracts.",
+                  whenSafe: "VCs cannot unilaterally block special resolutions. You can pass major structural changes, AoA amendments, and mergers with the support of other shareholders — VCs cannot single-handedly stop you.",
+                  whenBreached: isUS
+                    ? "VCs can block Charter amendments, new share classes, mergers, and dissolution. Their consent is needed for any major structural change — effectively a permanent veto on company structure, regardless of board dynamics."
+                    : "This is a CODE RED: VCs can now block every special resolution under the Companies Act. You cannot change the AoA, merge, reduce capital, wind up, or issue new share classes without their consent. This right exists in law — no SHA clause can take it away. The only way out is buying back their shares.",
+                  marketNote: isUS ? null : "India only: the 26% blocking threshold is a statutory right under Companies Act s.114. It is not a contractual right — it cannot be modified by the SHA. Once crossed, it is permanent unless you buy back sufficient shares.",
+                },
+                {
+                  key: "t50vc",
+                  label: "VC combined majority",
+                  threshold: "50%",
+                  ok: vcPct < 50,
+                  current: vcPct,
+                  who: "vcs",
+                  meaning: "Once VCs combined hold >50% of total equity (and therefore voting rights, assuming single-class shares), they can pass ordinary resolutions without founders. Combined with their board seats, this gives VCs effective operational control of the company.",
+                  whenSafe: "No single VC combination can pass ordinary resolutions without at least one founder's vote. Day-to-day governance, financial approvals, and director appointments all require founder participation.",
+                  whenBreached: isUS
+                    ? "VCs can pass ordinary resolutions without founders — elect new directors at shareholder level, approve accounts, approve VC-affiliated transactions, and block resolutions founders bring. Combined with board control, they can effectively run the company without you."
+                    : "VCs can pass all ordinary resolutions without founder votes. They can appoint and remove non-executive directors, approve related-party transactions (even with VC-affiliated entities), and approve financial accounts — all without you. This is effective shareholder-level control.",
+                  marketNote: null,
+                },
+                {
+                  key: "t10",
+                  label: "VC requisition right",
+                  threshold: "10%",
+                  ok: vcPct < 10,
+                  current: vcPct,
+                  who: "vcs",
+                  meaning: isUS
+                    ? "Under most state laws and Voting Agreements, shareholders holding ≥10% of voting shares can demand a special shareholder meeting for any purpose. VCs use this to put hostile resolutions to a shareholder vote outside the normal AGM cycle."
+                    : "Under Companies Act 2013 s.100, shareholders holding ≥10% of paid-up share capital can requisition an Extraordinary General Meeting (EGM). This right activates for virtually any VC after Seed round and is used to put resolutions directly to shareholders — bypassing the board.",
+                  whenSafe: "No investor can force an extraordinary shareholder meeting. You control the meeting calendar and agenda. VCs can only raise issues through the board, which you control.",
+                  whenBreached: isUS
+                    ? "Any VC holding ≥10% can call a special shareholder meeting at any time to put resolutions to a vote — including resolutions to remove directors, approve transactions, or amend governance documents. The board cannot block this."
+                    : "Any VC with ≥10% can requisition an EGM within 21 days. They set the agenda. The board must hold the EGM within 45 days or the requisitionists can convene it themselves. VCs use this to escalate governance disputes outside normal channels.",
+                  marketNote: null,
+                },
               ];
               return (
-                <div className="space-y-2">
-                  {checks.map((c) => (
-                    <div key={c.label} className="flex items-center justify-between bg-muted rounded-md px-3 py-2">
-                      <div className="text-xs font-semibold">{c.label}</div>
-                      <div className="flex items-center gap-2">
-                        <div className="text-xs text-muted-foreground">{c.current.toFixed(1)}%</div>
-                        <Badge className={cn("text-[10px]", c.ok ? "bg-emerald-500/15 text-emerald-700 border border-emerald-500/30" : "bg-red-500/15 text-red-600 border border-red-500/30")}>
-                          {c.ok ? c.goodText : c.badText}
-                        </Badge>
-                      </div>
-                    </div>
+                <Accordion type="single" collapsible className="w-full space-y-1">
+                  {thresholds.map((t) => (
+                    <AccordionItem
+                      key={t.key}
+                      value={t.key}
+                      className={cn(
+                        "rounded-md border px-3",
+                        t.ok ? "border-emerald-300/60 bg-emerald-500/5" : "border-red-400/60 bg-red-500/5",
+                      )}
+                    >
+                      <AccordionTrigger className="hover:no-underline py-3">
+                        <div className="flex items-center justify-between w-full pr-2">
+                          <div className="flex items-center gap-2">
+                            <span className={cn("h-2.5 w-2.5 rounded-full flex-shrink-0", t.ok ? "bg-emerald-500" : "bg-red-500")} />
+                            <span className="text-sm font-semibold text-left">{t.label}</span>
+                            <span className="text-xs text-muted-foreground hidden sm:inline">({t.who === "founders" ? `founders at ${t.current.toFixed(1)}%` : `VCs at ${t.current.toFixed(1)}%`})</span>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className="text-xs font-bold text-muted-foreground">{t.threshold}</span>
+                            <Badge className={cn("text-[10px]", t.ok ? "bg-emerald-500/15 text-emerald-700 border border-emerald-500/30" : "bg-red-500/15 text-red-600 border border-red-500/30")}>
+                              {t.ok ? "SAFE" : "BREACHED"}
+                            </Badge>
+                          </div>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-1 pb-3">
+                        <div className="space-y-3">
+                          <div>
+                            <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">Why this threshold matters</div>
+                            <div className="text-xs leading-relaxed">{t.meaning}</div>
+                          </div>
+                          <div className={cn("rounded-lg p-2.5 border", t.ok ? "bg-emerald-50/80 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800" : "bg-muted border-border")}>
+                            <div className="text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 mb-1">✅ While SAFE ({t.threshold} not yet crossed)</div>
+                            <div className="text-xs leading-relaxed">{t.whenSafe}</div>
+                          </div>
+                          <div className={cn("rounded-lg p-2.5 border", !t.ok ? "bg-red-50/80 border-red-200 dark:bg-red-950/20 dark:border-red-800" : "bg-muted border-border")}>
+                            <div className="text-[10px] font-bold uppercase tracking-wide text-red-600 dark:text-red-400 mb-1">🚨 Once BREACHED ({t.threshold} crossed)</div>
+                            <div className="text-xs leading-relaxed">{t.whenBreached}</div>
+                          </div>
+                          {t.marketNote && (
+                            <div className="rounded-lg bg-blue-50 border border-blue-200 px-2.5 py-2 dark:bg-blue-950/20 dark:border-blue-800">
+                              <div className="text-[10px] font-bold uppercase tracking-wide text-blue-600 dark:text-blue-400 mb-1">📍 {isUS ? "US" : "India"} specific</div>
+                              <div className="text-xs leading-relaxed text-blue-800 dark:text-blue-200">{t.marketNote}</div>
+                            </div>
+                          )}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
                   ))}
-                </div>
+                </Accordion>
               );
             })()}
           </Card>
