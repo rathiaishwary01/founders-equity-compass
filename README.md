@@ -4,7 +4,21 @@
 
 EquiCompass is an open-source equity dilution simulator built for founders. It lets you model funding rounds, liquidation preferences, vesting schedules, anti-dilution clauses, and exit waterfalls — and surfaces plain-English negotiation guidance at every step.
 
-<!-- screenshot -->
+You can try it out here : https://equicompass.capstack.workers.dev/
+
+<img width="839" height="436" alt="image" src="https://github.com/user-attachments/assets/a66fffe0-b23c-4471-afe0-487f70c887e8" />
+
+<img width="826" height="431" alt="image" src="https://github.com/user-attachments/assets/b7a5c656-1ace-41e4-8422-418034a58067" />
+
+<img width="825" height="410" alt="image" src="https://github.com/user-attachments/assets/440a06c5-f637-42ad-9e58-2ba7d1b7b51b" />
+
+<img width="842" height="402" alt="image" src="https://github.com/user-attachments/assets/0869e9ea-221d-4d07-b779-67551ab2016e" />
+
+<img width="830" height="427" alt="image" src="https://github.com/user-attachments/assets/8262e818-dffa-4566-9a83-de77e2121051" />
+
+<img width="833" height="432" alt="image" src="https://github.com/user-attachments/assets/1c06fda0-c01c-4feb-b746-38786f72b6d9" />
+
+<img width="830" height="439" alt="image" src="https://github.com/user-attachments/assets/0c1fab20-c37d-49cf-be15-986daeeef7f4" />
 
 ---
 
