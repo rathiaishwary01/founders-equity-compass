@@ -125,29 +125,44 @@ export function computeSnaps(state: SimulatorState): Record<string, Snapshot> {
     const isDownRound = prevPostMoney !== null && pre < prevPostMoney;
     const valDrop = isDownRound && prevPostMoney !== null ? Math.round(((prevPostMoney - pre) / prevPostMoney) * 100) : 0;
 
-    // 7. BBWA anti-dilution — only on down rounds, only for previous VC rounds with protection
+    // 7. Anti-dilution adjustment — only on down rounds, only for prior VC rounds with protection
     //
-    // Formula: adFactor = (prevPost + newRaise) / (prevPost + newRaise × prevPost/newPre)
-    // adFactor < 1 means the VC's conversion price drops → they receive more shares.
-    // Their percentage is boosted by (1/adFactor); the extra is taken proportionally
-    // from all other current holders.
+    // BBWA formula:    adFactor = (prevPost + newRaise) / (prevPost + newRaise × prevPost/newPre)
+    //   adFactor approaches 1 for small raises (mild adjustment) and pre/prevPost for large raises.
+    //
+    // Full-ratchet formula: adFactor = newPre / prevPost
+    //   The VC's conversion price is fully reset to the new round's price per share.
+    //   In a 50% down round (pre = 0.5 × prevPost), adFactor = 0.5 → VC's stake DOUBLES.
+    //   This is the most aggressive possible clause — never market standard.
+    //
+    // In both cases: adFactor < 1 → VC's pct boosted by (1/adFactor), extra taken from all others.
     if (isDownRound) {
       for (const rd of roundData) {
         if (rd.type !== "vc" || rd.roundKey === key) continue; // skip SAFEs & current round
         const prevConf = rd.roundKey !== "safe"
           ? state.rounds[rd.roundKey as RoundKey]
           : null;
-        if (!prevConf || (prevConf.antiDilution ?? "none") === "none") continue;
+        if (!prevConf) continue;
 
-        // BBWA adjustment factor
-        const adFactor = (rd.postMoney + inv) / (rd.postMoney + inv * (rd.postMoney / pre));
-        if (adFactor >= 1) continue; // sanity — should always be < 1 in a down round
+        const antiDilution = prevConf.antiDilution ?? "none";
+        if (antiDilution === "none") continue;
+
+        // Compute adjustment factor
+        let adFactor: number;
+        if (antiDilution === "bbwa") {
+          adFactor = (rd.postMoney + inv) / (rd.postMoney + inv * (rd.postMoney / pre));
+        } else {
+          // full-ratchet: conversion price resets entirely to current round price
+          adFactor = pre / rd.postMoney;
+        }
+
+        if (adFactor >= 1) continue; // sanity check — should always be < 1 in a down round
 
         const vcHolder = cur.find((h) => h.name === rd.vcName);
         if (!vcHolder) continue;
 
         const oldPct = vcHolder.pct;
-        const newPct = oldPct / adFactor; // boost: more shares for the VC
+        const newPct = oldPct / adFactor; // boost: VC receives more shares
         const extraPct = newPct - oldPct;
 
         // Dilute all OTHER holders proportionally to fund the boost
@@ -156,7 +171,7 @@ export function computeSnaps(state: SimulatorState): Record<string, Snapshot> {
 
         cur = cur.map((h) => {
           if (h.name === rd.vcName) return { ...h, pct: newPct };
-          // Clamp to 0 — prevents negative pct in extreme down rounds
+          // Clamp to 0 — prevents negative pct in extreme full-ratchet down rounds
           return { ...h, pct: Math.max(0, h.pct - (h.pct / othersTotal) * extraPct) };
         });
       }

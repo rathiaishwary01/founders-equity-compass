@@ -189,6 +189,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
   const allPayouts = calcPayouts(latest, state.exitValue, state.usePref);
   const vcTotal = latest.holders.filter((h) => h.type === "vc" || h.type === "safe").reduce((s, h) => s + (allPayouts[h.name] || 0), 0);
 
+
   // ── Input validation ──
   const validationErrors = useMemo(() => {
     const errs: Record<string, string> = {};
@@ -222,6 +223,18 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
 
   const enabledRounds = ROUND_KEYS.filter((k) => state.rounds[k].enabled);
   const roundsEnabledCount = enabledRounds.length;
+
+  // ── Redemption rights derived values ──
+  const redemptionItems = enabledRounds.map((k) => {
+    const r = state.rounds[k];
+    if (!r.redemptionEnabled) return null;
+    const mult    = r.redemptionMultiple ?? 1;
+    const years   = r.redemptionYears   ?? 5;
+    const liability = r.raise * mult;
+    return { roundKey: k, label: ROUND_LABELS[k as RoundKey], investment: r.raise, liability, years, mult };
+  }).filter(Boolean) as Array<{ roundKey: string; label: string; investment: number; liability: number; years: number; mult: number }>;
+  const totalRedemptionLiability = redemptionItems.reduce((s, r) => s + r.liability, 0);
+  const hasRedemption = redemptionItems.length > 0;
   const anyRoundsEnabled = roundsEnabledCount > 0;
 
   const protectData = useMemo(() => {
@@ -334,7 +347,40 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
       }
     }
 
-    return signals.slice(0, 6);
+    // SAFE with no cap warning
+    if (state.safe.enabled && !state.safe.mfn && (state.safe.cap <= 0 || state.safe.cap < state.safe.amount * 2)) {
+      signals.push({
+        tone: "red",
+        text: state.safe.cap <= 0
+          ? "SAFE has no valuation cap — it converts at whatever price your next round sets, giving the investor no dilution protection. Without a cap, the SAFE behaves like a discount-only note: potentially very cheap equity for the investor at a high-valuation round."
+          : `SAFE cap of ${fmtM(state.safe.cap)} is less than 2× the SAFE amount (${fmtM(state.safe.amount)}) — this is an unusually tight cap. If your next round values the company above the cap, the SAFE investor gets a large ownership boost at your expense. Review the conversion math.`,
+      });
+    }
+
+    // Down round → governance renegotiation prompt
+    const hasDownRound = Object.values(snaps).some((s) => s.isDownRound);
+    if (hasDownRound) {
+      const worstDrop = Math.max(...Object.values(snaps).filter((s) => s.isDownRound).map((s) => s.valDrop));
+      signals.push({
+        tone: "red",
+        text: `Down round detected (−${worstDrop}% below previous post-money). This is your strongest leverage to renegotiate governance: push to reset board composition, remove or sunset anti-dilution clauses from prior rounds, and negotiate new vesting cliff resets for founders. VCs in a down round need your cooperation — use it.`,
+      });
+    }
+
+    // India: angel tax risk
+    if (!isUS && state.safe.enabled && state.safe.amount > 0) {
+      signals.push({
+        tone: "yellow",
+        text: "India angel tax risk: if your company receives investment above FMV (as assessed by a SEBI-registered valuer), the excess is taxable as 'income from other sources' under Section 56(2)(viib) of the Income Tax Act. Foreign investors are now included (Finance Act 2023). Get a 409A-equivalent FMV valuation from a registered valuer before closing any round.",
+      });
+    } else if (!isUS && anyRoundsEnabled && enabledRounds.includes("preseed")) {
+      signals.push({
+        tone: "yellow",
+        text: "India angel tax (Section 56(2)(viib)): if share allotment price exceeds FMV (SEBI-registered valuer), the premium is taxable income for the company. Applies to both domestic and foreign investors post-2023. Always obtain a certified FMV report before closing — cost is ₹30–80K but avoids a potential multi-crore tax demand.",
+      });
+    }
+
+    return signals.slice(0, 8);
   }, [
     isUS,
     latest.vcSeats,
@@ -346,7 +392,12 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
     hasParticipatingPreferred,
     participatingRoundNames,
     state.safe.enabled,
+    state.safe.cap,
+    state.safe.amount,
+    state.safe.mfn,
     anyRoundsEnabled,
+    snaps,
+    enabledRounds,
   ]);
 
   const recommendations = useMemo(() => {
@@ -433,6 +484,20 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
         why: "2 VC seats at Series A + 1 at Series B = tied board. The independent director becomes kingmaker from Series B onward and you have no control over who that is.",
         nextStep: "Counter the term sheet with 1 seat + 1 observer for the Series A lead. Offer enhanced information rights (monthly financials, budget approval visibility) as the trade. Most institutional VCs will accept if you ask early.",
         leverage: "2 VC seats is not market standard at Series A in the US or India — use NVCA or YC safe harbour language to anchor the negotiation.",
+      });
+    }
+
+    // ── Redemption rights ────────────────────────────────────────────────────
+    if (hasRedemption) {
+      recs.push({
+        timing: "now",
+        priority: "critical",
+        action: `Remove redemption rights — ${fmtM(totalRedemptionLiability)} cash liability if triggered`,
+        why: `${redemptionItems.map((r) => `${r.label} VC holds a ${r.mult}× redemption right worth ${fmtM(r.liability)} (due ${r.years}y post-close)`).join("; ")}. Total cash liability: ${fmtM(totalRedemptionLiability)}. If the company cannot repurchase at trigger, the VC can force a sale or liquidation at a time you don't control.`,
+        nextStep: isUS
+          ? "Strike redemption entirely (most US VCs accept this post-2015 NVCA revision). If they insist: cap at 1× cost (no premium), require approval of 75%+ of preferred, and include a 3-year installment clause. Reference NVCA Model Investors' Rights Agreement §4."
+          : "Cite Companies Act 2013 §68 — repurchases require distributable profits and board + shareholder approval. Negotiate: cap at 1× cost, installment buyout over 3 years, trigger only on IPO failure after 7+ years. Blume/3one4/Elevation rarely enforce redemption; use this as leverage to remove it.",
+        leverage: `${fmtM(totalRedemptionLiability)} is a concrete number — put it on the table. Show the VC that forcing redemption on a company with insufficient distributable profits triggers insolvency proceedings, destroying their investment too. Most VCs will drop it.`,
       });
     }
 
@@ -543,7 +608,36 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
     }
 
     return recs;
-  }, [isUS, latest, founderSeats, founderPct, founderOnlyHolders, anyRoundsEnabled, state.rounds, state.exitValue, state.usePref, enabledRounds, hasParticipatingPreferred, state.safe.enabled]);
+  }, [isUS, latest, founderSeats, founderPct, founderOnlyHolders, anyRoundsEnabled, state.rounds, state.exitValue, state.usePref, enabledRounds, hasParticipatingPreferred, state.safe.enabled, hasRedemption, redemptionItems, totalRedemptionLiability]);
+
+  // Full-ratchet counterfactual — only runs when at least one enabled round has full-ratchet
+  const hasFullRatchet = ROUND_KEYS.some((k) => state.rounds[k]?.enabled && state.rounds[k]?.antiDilution === "full-ratchet");
+
+  const fullRatchetComparison = useMemo(() => {
+    if (!hasFullRatchet) return null;
+    const mkState = (ad: "bbwa" | "none") => ({
+      ...state,
+      rounds: Object.fromEntries(
+        ROUND_KEYS.map((k) => [
+          k,
+          state.rounds[k]?.antiDilution === "full-ratchet"
+            ? { ...state.rounds[k], antiDilution: ad }
+            : state.rounds[k],
+        ])
+      ) as typeof state.rounds,
+    });
+    const snapsBBWA = computeSnaps(mkState("bbwa"));
+    const snapsNone = computeSnaps(mkState("none"));
+    const latestBBWA = latestSnap(snapsBBWA);
+    const latestNone = latestSnap(snapsNone);
+    const founderPctFR   = latest.holders.filter((h) => h.type === "founder").reduce((s, h) => s + h.pct, 0);
+    const founderPctBBWA = latestBBWA.holders.filter((h) => h.type === "founder").reduce((s, h) => s + h.pct, 0);
+    const founderPctNone = latestNone.holders.filter((h) => h.type === "founder").reduce((s, h) => s + h.pct, 0);
+    const payFR   = founderPayouts(latest,     state.exitValue, state.usePref).reduce((s, f) => s + f.payout, 0);
+    const payBBWA = founderPayouts(latestBBWA, state.exitValue, state.usePref).reduce((s, f) => s + f.payout, 0);
+    const payNone = founderPayouts(latestNone, state.exitValue, state.usePref).reduce((s, f) => s + f.payout, 0);
+    return { founderPctFR, founderPctBBWA, founderPctNone, payFR, payBBWA, payNone };
+  }, [hasFullRatchet, state, latest]);
 
   // Line chart data with dynamic Y max (BUG FIX 2)
   const lineData = snapKeys.map((k) => {
@@ -1249,8 +1343,10 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                                 <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">?</button>
                               </TooltipTrigger>
                               <TooltipContent className="max-w-[220px] text-xs">
-                                <p className="font-bold text-primary mb-1">ESOP post</p>
-                                <p>Option pool target after this round closes. Top-up happens pre-investment — dilutes founders, not the VC. VCs typically require 10–15%.</p>
+                                <p className="font-bold text-primary mb-1">ESOP post (%)</p>
+                                <p className="mb-1">Target option pool <span className="font-semibold">after</span> this round closes, as a % of fully-diluted shares.</p>
+                                <p className="mb-1"><span className="font-semibold text-amber-600">VCs always quote post-money.</span> The top-up is created <span className="font-semibold">before</span> their investment — so it dilutes you, not them. A 15% post-money pool on a $10M raise at $20M pre = founders absorb the entire top-up cost.</p>
+                                <p>Counter: negotiate the pool size based on a 12–18 month hiring plan. Don't accept a "standard 15%" without modelling the actual headcount needed.</p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -1339,10 +1435,11 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                               <TooltipTrigger asChild>
                                 <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">?</button>
                               </TooltipTrigger>
-                              <TooltipContent className="max-w-[240px] text-xs">
+                              <TooltipContent className="max-w-[280px] text-xs">
                                 <p className="font-bold text-primary mb-1">Anti-dilution Protection</p>
-                                <p className="mb-1">Protects this VC if a future round is raised at a lower valuation (down round).</p>
-                                <p><span className="font-bold">BBWA</span> — Broad-Based Weighted Average. Market standard. Adjusts the VC's conversion price using a weighted average of old and new share prices. Founders lose more in a down round, but less than full ratchet.</p>
+                                <p className="mb-1">Protects this VC if a future round prices lower (down round).</p>
+                                <p className="mb-1"><span className="font-bold">BBWA</span> — Broad-Based Weighted Average. Market standard. Softens the adjustment using a weighted average of old and new prices.</p>
+                                <p><span className="font-bold text-red-600">Full-Ratchet</span> — Resets conversion price entirely to the new round price. In a 50% down round, the VC's stake doubles. <span className="font-semibold">Never accept this.</span></p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -1350,15 +1447,73 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                         <Select
                           value={r.antiDilution ?? "none"}
                           disabled={readOnly}
-                          onValueChange={(v) => updateRound(k, { antiDilution: v as "none" | "bbwa" })}
+                          onValueChange={(v) => updateRound(k, { antiDilution: v as "none" | "bbwa" | "full-ratchet" })}
                         >
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="none">None</SelectItem>
                             <SelectItem value="bbwa">BBWA (Standard)</SelectItem>
+                            <SelectItem value="full-ratchet">Full-Ratchet ⚠️</SelectItem>
                           </SelectContent>
                         </Select>
+                        {r.antiDilution === "full-ratchet" && (
+                          <div className="mt-2 p-2 rounded-md bg-red-500/10 border border-red-500/30 text-[10px] text-red-700 leading-relaxed">
+                            <span className="font-bold">⚠️ Full-ratchet is not market standard anywhere.</span> At a 50% down round, this VC's stake doubles at your expense. Push back to BBWA in every negotiation — cite NVCA Model Documents (US) or standard Blume/Elevation/Accel term sheets (India) as your anchor.
+                          </div>
+                        )}
                       </div>}
+                      {expertMode && !isPreSeed && (
+                        <div>
+                          <Label className="text-xs font-semibold mb-2 block">Redemption Rights</Label>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Switch
+                              checked={r.redemptionEnabled ?? false}
+                              disabled={readOnly}
+                              onCheckedChange={(v) => updateRound(k, { redemptionEnabled: v })}
+                            />
+                            <span className="text-xs text-muted-foreground">Investor can force company to repurchase shares after trigger period</span>
+                          </div>
+                          {r.redemptionEnabled && (
+                            <div className="space-y-2 pl-1">
+                              <div className="flex items-center gap-3">
+                                <div className="flex-1">
+                                  <Label className="text-[10px] text-muted-foreground">Trigger (years)</Label>
+                                  <Input
+                                    type="number" min={1} max={10} step={1}
+                                    value={r.redemptionYears ?? 5}
+                                    disabled={readOnly}
+                                    onChange={(e) => updateRound(k, { redemptionYears: parseInt(e.target.value) || 5 })}
+                                    className="h-7 text-xs mt-0.5"
+                                  />
+                                </div>
+                                <div className="flex-1">
+                                  <Label className="text-[10px] text-muted-foreground">Multiple on cost</Label>
+                                  <Select
+                                    value={String(r.redemptionMultiple ?? 1)}
+                                    disabled={readOnly}
+                                    onValueChange={(v) => updateRound(k, { redemptionMultiple: parseFloat(v) })}
+                                  >
+                                    <SelectTrigger className="h-7 text-xs mt-0.5"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="1">1× (cost)</SelectItem>
+                                      <SelectItem value="1.25">1.25× (cost + 25%)</SelectItem>
+                                      <SelectItem value="1.5">1.5× (cost + 50%)</SelectItem>
+                                      <SelectItem value="2">2× (double)</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                              <div className="p-2 rounded-md bg-orange-500/10 border border-orange-500/30 text-[10px] text-orange-800 dark:text-orange-300">
+                                ⚠️ Cash liability: <span className="font-bold">{fmtM(r.raise * (r.redemptionMultiple ?? 1))}</span> due after{" "}
+                                <span className="font-bold">{r.redemptionYears ?? 5} years</span> if triggered.{" "}
+                                {isUS
+                                  ? "Push back: cap at 1× cost, require majority preferred approval to trigger, and include a buyout-by-installments clause (NVCA Model Documents)."
+                                  : "Push back: cap at 1× cost, require board + majority preferred approval, and include installment buyout. India Companies Act §68 restricts repurchases to distributable profits — use as negotiation leverage."}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="rounded-md bg-muted px-3 py-2 text-xs">
                       <div className="flex items-center justify-between">
@@ -1374,16 +1529,60 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                     {(() => {
                       const snap = snaps[k];
                       if (!snap?.isDownRound) return null;
-                      const adRounds = ROUND_KEYS.filter((pk) => {
+                      const frRounds = ROUND_KEYS.filter((pk) => {
+                        const pc = state.rounds[pk];
+                        return pc?.enabled && pc.antiDilution === "full-ratchet" && pk !== k;
+                      });
+                      const bbwaRounds = ROUND_KEYS.filter((pk) => {
                         const pc = state.rounds[pk];
                         return pc?.enabled && pc.antiDilution === "bbwa" && pk !== k;
                       });
+
+                      // Compute BBWA-counterfactual founder equity for comparison when full-ratchet is active
+                      const frImpacts = frRounds.map((pk) => {
+                        const rd = snap.roundData.find((rd) => rd.roundKey === pk);
+                        if (!rd) return null;
+                        const adFR   = r.preMoney / rd.postMoney;
+                        const adBBWA = (rd.postMoney + r.raise) / (rd.postMoney + r.raise * (rd.postMoney / r.preMoney));
+                        if (adFR >= 1) return null;
+                        const h = snap.holders.find((h) => h.name === rd.vcName);
+                        if (!h) return null;
+                        // Back-compute pre-adjustment pct, then forward-compute BBWA equivalent
+                        const preAdjPct  = h.pct * adFR;
+                        const bbwaPct    = preAdjPct / adBBWA;
+                        const extraCost  = parseFloat((h.pct - bbwaPct).toFixed(1));
+                        const multiplier = parseFloat((1 / adFR).toFixed(2));
+                        return { vcName: rd.vcName, multiplier, extraCost };
+                      }).filter(Boolean) as Array<{ vcName: string; multiplier: number; extraCost: number }>;
+
+                      const hasFR = frRounds.length > 0;
                       return (
-                        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[10px] text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
-                          <span className="font-bold">Down round — {snap.valDrop}% below previous post-money.</span>
-                          {adRounds.length > 0
-                            ? ` BBWA anti-dilution triggered for ${adRounds.map((pk) => ROUND_LABELS[pk]).join(", ")} investors — founders diluted further.`
-                            : " No anti-dilution protection active for prior investors."}
+                        <div className={cn(
+                          "rounded-md border px-3 py-2.5 text-[10px] space-y-1.5",
+                          hasFR
+                            ? "border-red-500/50 bg-red-500/8 text-red-700"
+                            : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300",
+                        )}>
+                          <div className="font-bold">
+                            {hasFR ? "🚨" : "⚠️"} Down round — {snap.valDrop}% below previous post-money.
+                          </div>
+                          {frImpacts.map((fi) => (
+                            <div key={fi.vcName}>
+                              <span className="font-semibold text-red-800">{fi.vcName} (full-ratchet):</span>{" "}
+                              stake boosted {fi.multiplier}× — founders absorb {fi.extraCost}pp more dilution vs. BBWA.
+                            </div>
+                          ))}
+                          {bbwaRounds.length > 0 && (
+                            <div>BBWA triggered for {bbwaRounds.map((pk) => ROUND_LABELS[pk]).join(", ")} — founders diluted, but far less than full-ratchet.</div>
+                          )}
+                          {frRounds.length === 0 && bbwaRounds.length === 0 && (
+                            <div>No anti-dilution active — prior investors absorb the full valuation drop.</div>
+                          )}
+                          {hasFR && (
+                            <div className="font-semibold mt-1">
+                              Negotiate full-ratchet → BBWA before any term sheet. In a down round, this is the single most dilutive clause a founder can face.
+                            </div>
+                          )}
                         </div>
                       );
                     })()}
@@ -1525,6 +1724,61 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             </div>
           </Card>
 
+          {/* ── Full-ratchet impact card ── */}
+          {hasFullRatchet && fullRatchetComparison && (() => {
+            const { founderPctFR, founderPctBBWA, founderPctNone, payFR, payBBWA, payNone } = fullRatchetComparison;
+            const costVsBBWA = parseFloat((founderPctBBWA - founderPctFR).toFixed(1));
+            const costVsNone = parseFloat((founderPctNone - founderPctFR).toFixed(1));
+            return (
+              <Card className="p-4 border-red-500/50">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="font-bold text-sm text-red-700">🚨 Full-Ratchet Anti-Dilution Impact</div>
+                  <Badge className="bg-red-500/15 text-red-700 border border-red-500/30 text-[10px]">Active</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Full-ratchet resets the VC's conversion price to the down-round price. This table shows what your founders' equity would be under each scenario.
+                </p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b text-[10px] uppercase text-muted-foreground">
+                        <th className="text-left py-1.5 pr-3">Scenario</th>
+                        <th className="text-right py-1.5 px-2">Founder Equity</th>
+                        <th className="text-right py-1.5 px-2">vs. Full-Ratchet</th>
+                        <th className="text-right py-1.5 pl-2">Payout @{fmtM(state.exitValue)}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b bg-red-500/5">
+                        <td className="py-2 pr-3 font-bold text-red-700">Full-Ratchet (current)</td>
+                        <td className="py-2 px-2 text-right font-bold text-red-700">{founderPctFR.toFixed(1)}%</td>
+                        <td className="py-2 px-2 text-right text-muted-foreground">—</td>
+                        <td className="py-2 pl-2 text-right font-bold text-red-700">{fmtM(payFR)}</td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 pr-3 font-semibold">BBWA (market standard)</td>
+                        <td className="py-2 px-2 text-right font-semibold text-emerald-600">{founderPctBBWA.toFixed(1)}%</td>
+                        <td className="py-2 px-2 text-right text-emerald-600 font-semibold">+{costVsBBWA}pp</td>
+                        <td className="py-2 pl-2 text-right font-semibold text-emerald-600">{fmtM(payBBWA)}</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 pr-3 font-semibold text-muted-foreground">No protection</td>
+                        <td className="py-2 px-2 text-right font-semibold">{founderPctNone.toFixed(1)}%</td>
+                        <td className="py-2 px-2 text-right text-emerald-700 font-semibold">+{costVsNone}pp</td>
+                        <td className="py-2 pl-2 text-right font-semibold">{fmtM(payNone)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div className="mt-3 text-[10px] text-red-700 bg-red-500/5 rounded px-2.5 py-2 leading-relaxed">
+                  <span className="font-bold">You are losing {costVsBBWA}pp of equity vs. BBWA.</span>{" "}
+                  Use the down round as your renegotiation window — insist on converting full-ratchet → BBWA as a condition of closing.
+                  VCs participating in the new round want it to close: that's your leverage.
+                </div>
+              </Card>
+            );
+          })()}
+
           {/* ── Board Seat Runway ── */}
           {(() => {
             const twoSeatThreshold = isUS ? 20 : 25;
@@ -1649,9 +1903,16 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                     )}>Founder {i + 1}</div>
                   ))}
                   <div className="px-3 py-1.5 rounded-md text-xs font-semibold bg-success/10 text-success border border-success/30">Independent{tied ? " 🔑" : ""}</div>
-                  {Array.from({ length: snap.vcSeats }).map((_, i) => (
-                    <div key={"v" + i} className="px-3 py-1.5 rounded-md text-xs font-semibold bg-danger/10 text-danger border border-danger/30">{snap.vcNames[i] || "VC"}</div>
-                  ))}
+                  {Array.from({ length: snap.vcSeats }).map((_, i) => {
+                    const vcN = snap.vcNames[i] || "VC";
+                    const rk = ROUND_KEYS.find((k) => ROUND_LABELS[k] + " VC" === vcN);
+                    const p2p = rk && state.rounds[rk]?.payToPlay;
+                    return (
+                      <div key={"v" + i} className={cn("px-3 py-1.5 rounded-md text-xs font-semibold bg-danger/10 text-danger border border-danger/30", p2p && "border-emerald-500/50")}>
+                        {vcN}{p2p ? " 🤝" : ""}
+                      </div>
+                    );
+                  })}
                   {Array.from({ length: snap.vcObs }).map((_, i) => (
                     <div key={"o" + i} className="px-3 py-1.5 rounded-md text-xs font-semibold bg-warning/10 text-warning-foreground border border-warning/40 border-dashed">Observer</div>
                   ))}
@@ -1821,6 +2082,21 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   clause: "Performance bonuses and salary increases approved by the board compensation committee are explicitly excluded from the dividend restriction.",
                 },
                 {
+                  key: "budget",
+                  title: "Annual budget & business plan approval",
+                  active: state.rounds.seed.enabled,
+                  market: "both",
+                  demand: isUS
+                    ? "VCs require board approval of the annual operating budget and 3-year business plan. Any spending outside the approved budget by more than 10–15% requires VC sign-off."
+                    : "VCs require board approval of the annual operating budget and business plan. Any spend variance >10–15% on individual line items (headcount, capex, marketing) requires VC consent.",
+                  push: isUS
+                    ? "Push for: (1) board approval of aggregate budget, not line-item, (2) 20% variance allowance on any single line item without re-approval, (3) emergency capex up to $250K without approval if CEO certifies business necessity, (4) budget deemed approved if board hasn't voted within 30 days of submission."
+                    : "Push for: (1) board approval of total budget envelope, not line-by-line, (2) 20% variance on any single line item without further approval, (3) emergency spend up to ₹2Cr on business-critical items without approval if signed off by CEO + CFO, (4) budget deemed approved if board hasn't voted within 30 days of founder submission.",
+                  clause: isUS
+                    ? "Annual budget approved by board majority (not preferred class vote). CEO may authorise variance up to 20% on any single budget line without re-approval. Aggregate variance >20% of total opex requires board notification (not approval) within 10 days."
+                    : "Annual budget approved by board resolution. CEO may authorise line-item variance up to 20% without further board approval. Any variance exceeding 20% of aggregate opex requires board notification within 15 days. Budget is deemed approved if the board fails to vote within 30 days of submission by management.",
+                },
+                {
                   key: "rofr",
                   title: "Right of First Refusal on founder share sales",
                   active: state.rounds.seed.enabled,
@@ -1840,11 +2116,11 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   market: "both",
                   demand: "If VCs holding X% of shares approve a sale of the company, they can force all other shareholders (including founders) to sell at the same price and terms.",
                   push: isUS
-                    ? "Push for: (1) drag requires approval of ≥75% of all shareholders (not just preferred), (2) drag price must be ≥ the original Series A price, (3) founders are not dragged below their liquidation preference floor."
-                    : "Push for: (1) drag requires ≥75% shareholder approval by value, (2) drag price must ≥ the last round post-money valuation, (3) founder employment contracts survive the drag.",
+                    ? `Push for: (1) drag requires approval of ≥75% of all shareholders (not just preferred), (2) drag price floor = ${latest.valuation ? fmtM(latest.valuation) : "last round post-money"} — no forced sale below current valuation, (3) founders are not dragged below their liquidation preference floor, (4) drag cannot be triggered by a single VC class alone.`
+                    : `Push for: (1) drag requires ≥75% shareholder approval by value, (2) drag price floor = ${latest.valuation ? fmtM(latest.valuation) : "last round post-money"} (your current post-money) — a VC cannot drag you into a below-valuation fire sale, (3) founder employment contracts survive the drag, (4) drag cannot be triggered within 3 years of first investment.`,
                   clause: isUS
-                    ? "Drag-along right requires approval of: (i) a majority of the board including at least one founder director, (ii) ≥75% of preferred stockholders, and (iii) ≥51% of common stockholders."
-                    : "Drag-along right requires approval of: (i) board resolution with founder director approval, (ii) ≥75% of preference shareholders, and (iii) ≥51% of equity shareholders by value.",
+                    ? `Drag-along right requires approval of: (i) a majority of the board including at least one founder director, (ii) ≥75% of preferred stockholders, and (iii) ≥51% of common stockholders. Drag-along shall not be exercisable at a price per share less than ${latest.valuation ? fmtM(latest.valuation) : "[last round post-money]"} (the Floor Valuation), adjusted for any subsequent financings.`
+                    : `Drag-along right requires approval of: (i) board resolution with founder director approval, (ii) ≥75% of preference shareholders, and (iii) ≥51% of equity shareholders by value. Drag-along shall not be triggered at a valuation below ${latest.valuation ? fmtM(latest.valuation) : "[last round post-money]"} (the Floor Valuation) without the unanimous written consent of all Founder Directors.`,
                 },
                 {
                   key: "bizchange",
@@ -2750,6 +3026,52 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
               </div>
               <div className="mt-2 text-[10px] text-muted-foreground">
                 {isUS ? "Return = payout ÷ investment. VCs targeting 3× fund-level returns need individual deals at 5–10×." : "Return = payout ÷ investment. India VCs typically target 5–8× on individual investments to hit 3× fund-level returns."}
+              </div>
+            </Card>
+          )}
+
+          {/* Redemption Risk Timeline */}
+          {hasRedemption && (
+            <Card className="p-4">
+              <div className="font-semibold text-sm mb-1">⏰ Redemption Risk Timeline</div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Investors with redemption rights can force the company to buy back their shares after the trigger period — regardless of exit readiness.
+              </p>
+              <div className="space-y-2 mb-4">
+                {redemptionItems.map((item) => (
+                  <div key={item.roundKey} className="flex items-center justify-between p-2.5 rounded-md border border-orange-300/60 bg-orange-50/50 dark:bg-orange-950/20">
+                    <div>
+                      <div className="text-xs font-semibold">{item.label} VC</div>
+                      <div className="text-[10px] text-muted-foreground">Triggers {item.years} years post-close · {item.mult}× cost</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-bold text-orange-700 dark:text-orange-400">{fmtM(item.liability)}</div>
+                      <div className="text-[9px] text-muted-foreground">cash demand</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div className="p-2.5 rounded-md bg-muted/60">
+                  <div className="text-[10px] uppercase text-muted-foreground font-semibold">Total Cash Demand</div>
+                  <div className="text-lg font-extrabold text-orange-700 dark:text-orange-400">{fmtM(totalRedemptionLiability)}</div>
+                  <div className="text-[10px] text-muted-foreground">if all redemptions triggered</div>
+                </div>
+                <div className="p-2.5 rounded-md bg-muted/60">
+                  <div className="text-[10px] uppercase text-muted-foreground font-semibold">vs. Modelled Exit</div>
+                  <div className={cn("text-lg font-extrabold", totalRedemptionLiability > state.exitValue * 0.5 ? "text-red-600" : "text-foreground")}>
+                    {state.exitValue > 0 ? ((totalRedemptionLiability / state.exitValue) * 100).toFixed(0) + "% of exit" : "—"}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">at {fmtM(state.exitValue)}</div>
+                </div>
+              </div>
+              <div className="p-2.5 rounded-md bg-orange-500/8 border border-orange-500/20 text-[10px] text-orange-900 dark:text-orange-300 space-y-1">
+                <div className="font-semibold">Negotiation lever:</div>
+                <div>
+                  {isUS
+                    ? "NVCA Model Documents (post-2015) omit redemption rights entirely. If a VC insists, counter with: 1× cost cap, 75% preferred approval to trigger, 3-year installment buyout, and automatic expiry on IPO filing. Most US VCs will accept."
+                    : "Companies Act 2013 §68 restricts repurchases to companies with distributable profits and free reserves. Contractual redemption rights don't override statutory constraints — use this as leverage. Counter: 1× cost cap, board + majority preferred approval, triggered only on IPO failure after year 7, payable in installments over 3 years."}
+                </div>
               </div>
             </Card>
           )}

@@ -21,11 +21,33 @@ export interface RoundConfig {
   secondary: number;
   prorata: number;
   /**
-   * Anti-dilution protection for this round's investors.
-   * "none"  — no protection (common for angel/pre-seed)
-   * "bbwa"  — broad-based weighted average (market standard for institutional rounds)
+   * Redemption rights — investor can force company to buy back shares after trigger period.
+   * Default: disabled. If enabled, total liability = investment × redemptionMultiple.
    */
-  antiDilution: "none" | "bbwa";
+  redemptionEnabled?: boolean;
+  /** Years after investment close before redemption right can be exercised (typical: 5) */
+  redemptionYears?: number;
+  /** Redemption price multiple on original investment (1.0 = cost, 1.25 = cost + 25% premium) */
+  redemptionMultiple?: number;
+
+  /**
+   * Anti-dilution protection for this round's investors.
+   * "none"         — no protection (common for angel/pre-seed)
+   * "bbwa"         — broad-based weighted average (market standard for institutional rounds)
+   * "full-ratchet" — conversion price fully resets to the new (down) round price.
+   *                  In a 50% down round, the VC's stake doubles entirely at founder expense.
+   *                  Never accept this — it is not market standard in any geography.
+   */
+  antiDilution: "none" | "bbwa" | "full-ratchet";
+  /**
+   * Pay-to-play: if an investor in this round fails to participate pro-rata
+   * in a future financing, their preferred shares convert to common (or to
+   * shadow preferred with no anti-dilution and 1× non-participating pref).
+   * This is a FOUNDER-PROTECTIVE clause — always demand it.
+   * Market standard: US (post-Series A common); India (less common, but
+   * Elevation/Sequoia-India deals increasingly include it).
+   */
+  payToPlay?: boolean;
 }
 
 export interface SafeConfig {
