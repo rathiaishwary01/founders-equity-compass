@@ -97,6 +97,22 @@ src/
 
 ---
 
+## Config Files
+
+All config files live at the repo root — most tools require them there.
+
+| File | Purpose |
+|---|---|
+| `vite.config.ts` | Vite build config. Wires up TanStack Start, React, Tailwind CSS, `vite-tsconfig-paths`, and the Cloudflare adapter (build-only). React and query packages are deduplicated to avoid multiple-instance issues. |
+| `tsconfig.json` | TypeScript config — strict mode, `@/*` path alias, bundler module resolution. |
+| `eslint.config.js` | ESLint with TypeScript, React Hooks, and Prettier rules. |
+| `.prettierrc` | Prettier: 100-char width, double quotes, trailing commas. |
+| `wrangler.jsonc` | Cloudflare Workers/Pages deploy config — app name and compatibility flags. |
+| `components.json` | shadcn/ui config — component style, Tailwind settings, import aliases. |
+| `bunfig.toml` | Bun package manager config (text lockfile disabled). |
+
+---
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).

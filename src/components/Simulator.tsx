@@ -3366,5 +3366,3 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
     </div>
   );
 }
-
-export { DEFAULT_STATE };
