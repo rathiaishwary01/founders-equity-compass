@@ -660,6 +660,47 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             </Select>
           </Card>
 
+          {/* Board retention equity threshold */}
+          <Card className="p-4">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Label className="text-xs font-semibold">Min. founder equity to retain board seats</Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">?</button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[260px] text-xs">
+                    <p className="font-bold text-primary mb-1">Board Retention Threshold</p>
+                    <p>Most VC term sheets include a "Director Qualification Threshold" clause: if founders collectively dilute below this equity %, the SHA requires them to resign their director seats. {isUS ? "US standard: 10–15% (NVCA model)." : "India standard: 15–20% (standard SEBI / Blume-era SHA language)."}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">
+              If founders collectively drop below this threshold, your SHA typically requires immediate resignation of all founder-nominated director seats.
+            </p>
+            <div className="flex items-center gap-3">
+              <Input
+                type="number"
+                min={0}
+                max={49}
+                step={1}
+                disabled={readOnly}
+                value={state.boardRetentionPct ?? (isUS ? 10 : 15)}
+                className="w-24 h-8 text-sm"
+                onChange={(e) => {
+                  const v = Math.max(0, Math.min(49, Number(e.target.value)));
+                  onChange({ ...state, boardRetentionPct: v });
+                }}
+              />
+              <span className="text-sm font-semibold">%</span>
+              <span className="text-xs text-muted-foreground">collective founder equity (fully diluted)</span>
+            </div>
+            <div className="mt-2 text-[11px] text-muted-foreground bg-muted/40 rounded px-2 py-1">
+              {isUS ? "💡 US default: 10% — Delaware / NVCA standard. Negotiate to 5% before signing." : "💡 India default: 15% — typical in SHA from Seed onward. Push to 10% and exclude VC-dilution rounds."}
+            </div>
+          </Card>
+
           {/* Pre-funding Cap Table Editor */}
           <Card className="p-4">
             <div className="flex items-center justify-between mb-3">
@@ -1442,12 +1483,28 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             const ip = 100 - fp - vp;
             const tied = snap.vcSeats === founderSeats && snap.vcSeats > 0;
             const danger = snap.vcSeats > founderSeats;
+            // Board retention threshold check
+            const snapFounderEquityPct = snap.holders.filter((h) => h.type === "founder").reduce((s, h) => s + h.pct, 0);
+            const retentionThreshold = state.boardRetentionPct ?? (isUS ? 10 : 15);
+            const belowRetention = k !== "pre" && snapFounderEquityPct < retentionThreshold;
             return (
-              <Card key={k} className="p-4">
-                <div className="text-[11px] font-bold uppercase text-muted-foreground mb-2">{snap.label}</div>
+              <Card key={k} className={cn("p-4", belowRetention && "border-red-500/50")}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-[11px] font-bold uppercase text-muted-foreground">{snap.label}</div>
+                  {belowRetention && (
+                    <div className="text-[10px] font-bold text-red-600 bg-red-500/10 border border-red-500/30 rounded-full px-2 py-0.5">
+                      ⚠️ Below retention threshold
+                    </div>
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-2 mb-3">
                   {Array.from({ length: founderSeats }).map((_, i) => (
-                    <div key={"f" + i} className="px-3 py-1.5 rounded-md text-xs font-semibold bg-primary/10 text-primary border border-primary/30">Founder {i + 1}</div>
+                    <div key={"f" + i} className={cn(
+                      "px-3 py-1.5 rounded-md text-xs font-semibold border",
+                      belowRetention
+                        ? "bg-red-500/10 text-red-600 border-red-500/30 line-through opacity-60"
+                        : "bg-primary/10 text-primary border-primary/30"
+                    )}>Founder {i + 1}</div>
                   ))}
                   <div className="px-3 py-1.5 rounded-md text-xs font-semibold bg-success/10 text-success border border-success/30">Independent{tied ? " 🔑" : ""}</div>
                   {Array.from({ length: snap.vcSeats }).map((_, i) => (
@@ -1464,6 +1521,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                 </div>
                 <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground">
                   <span>● Founders {fp}%</span><span>● VCs {vp}%</span><span>● Independent {ip}%</span>
+                  <span className="ml-auto">Founder equity: {snapFounderEquityPct.toFixed(1)}%</span>
                 </div>
                 <div className={cn(
                   "mt-2 inline-block text-[11px] font-bold px-3 py-1 rounded-full",
@@ -1471,6 +1529,12 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                 )}>
                   {danger ? `VC-controlled: ${vp}% vs founders ${fp}%` : tied ? `Tied — independent decides` : `Founder-controlled: ${fp}% vs ${vp}%`}
                 </div>
+                {belowRetention && (
+                  <div className="mt-3 p-2.5 rounded-md bg-red-500/8 border border-red-500/25 text-[11px] text-red-700 leading-relaxed">
+                    <span className="font-bold">SHA Board Retention Clause triggered.</span> Founders hold {snapFounderEquityPct.toFixed(1)}% equity — below the {retentionThreshold}% threshold set in your SHA. Under standard {isUS ? "IRA / SHA" : "SHA"} language, founders are required to resign all {founderSeats} director seat{founderSeats > 1 ? "s" : ""}. The independent director and VC directors would then fully control the board.{" "}
+                    <span className="font-semibold">Negotiate this clause out before signing — or push the threshold down to {isUS ? "5%" : "10%"}.</span>
+                  </div>
+                )}
               </Card>
             );
           })}
@@ -1643,6 +1707,22 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   clause: isUS
                     ? "Key man event means departure of the named CEO only. Company has 90 days to appoint a board-approved replacement. Key man does not trigger drag-along, redemption rights, or any anti-dilution adjustment."
                     : "Key man event means voluntary departure of the CEO only. Company has 90 days to appoint a board-approved replacement. Key man event does not trigger preference share conversion, drag-along, or redemption rights.",
+                },
+                // ── Board seat retention condition ─────────────────────────
+                {
+                  key: "boardretention",
+                  title: "Minimum equity condition for founder board seats",
+                  active: anyRoundsEnabled,
+                  market: "both",
+                  demand: isUS
+                    ? "VCs include a 'Director Qualification Threshold' in the IRA / SHA: if founders collectively fall below 10–15% fully-diluted ownership, they must immediately resign all director seats — giving VCs and the independent full board control."
+                    : "VCs include a 'Board Seat Retention Condition' in the SHA: if founders collectively fall below 15–20% equity (fully diluted), founder-nominated directors must resign, leaving board control entirely with VCs and the independent director.",
+                  push: isUS
+                    ? "Push for: (1) threshold at 5%, not 10–15% — meaningful dilution should not cost your seat, (2) threshold applies ONLY if the drop was from founder-initiated secondary sales, not from company-issued new equity in any board-approved round, (3) 90-day cure period to recapture equity before resignation triggers, (4) right to appoint a non-executive observer seat even after threshold breach."
+                    : "Push for: (1) lower threshold to 10%, not 15–20%, (2) VC-driven dilution from Qualified Financing Rounds does NOT count toward the threshold for 12 months post-closing, (3) 90-day cure period before forced resignation, (4) if threshold is breached, founders retain the right to nominate one non-executive independent director from an agreed list.",
+                  clause: isUS
+                    ? "Each Founder Director shall be required to resign their director seat only if (i) the aggregate equity ownership of all Founders falls below [5]% of the Company's fully diluted capitalization, AND (ii) such decrease results from voluntary transfers or secondary sales by Founders, and not from the issuance of new Company securities in a board-approved financing. The Company shall provide written notice to Founders within 10 business days of any such breach, with a 90-day cure period prior to any required resignation."
+                    : "The right of the Founders to nominate Founder Directors shall lapse only if the aggregate equity shareholding of all Founders (on a fully diluted basis, excluding shares transferred in Secondary Sales) falls below [10]% of the fully diluted share capital of the Company. For the avoidance of doubt, dilution caused by allotment of shares in any Qualified Financing Round shall not reduce the Founders' qualifying shareholding for purposes of this clause for a period of 12 (twelve) months from the date of allotment. A 90-day notice and cure period shall apply before any required resignation.",
                 },
                 // ── India-specific ─────────────────────────────────────────
                 {

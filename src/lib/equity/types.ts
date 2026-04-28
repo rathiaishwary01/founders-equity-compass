@@ -75,6 +75,13 @@ export interface SimulatorState {
    * Includes all holder types (founder, esop, advisory).
    */
   founders?: Holder[];
+  /**
+   * Minimum collective founder equity % required to retain board seats.
+   * If founders drop below this threshold (due to dilution / secondary sales),
+   * the SHA/Voting Agreement typically requires them to resign their director seats.
+   * India default: 15% | US default: 10%
+   */
+  boardRetentionPct?: number;
 }
 
 export interface RoundData {
