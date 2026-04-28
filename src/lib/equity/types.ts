@@ -135,10 +135,9 @@ export interface Snapshot {
 }
 
 export const INITIAL_HOLDERS: Holder[] = [
-  { name: "Founder 1", role: "CEO", pct: 32.4, type: "founder" },
-  { name: "Founder 2", role: "CTO", pct: 25.2, type: "founder" },
-  { name: "Founder 3", role: "COO", pct: 16.2, type: "founder" },
-  { name: "Founder 4", role: "Co-founder", pct: 16.2, type: "founder" },
+  { name: "Founder 1", role: "CEO", pct: 30, type: "founder" },
+  { name: "Founder 2", role: "CTO", pct: 30, type: "founder" },
+  { name: "Founder 3", role: "COO", pct: 30, type: "founder" },
   { name: "ESOP Pool", role: "Employees", pct: 8.0, type: "esop" },
   { name: "Advisory Pool", role: "Advisors", pct: 2.0, type: "advisory" },
 ];
