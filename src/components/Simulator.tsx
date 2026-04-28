@@ -77,12 +77,16 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
       founderPct: number;
       vcPct: number;
       vcSeats: number;
+      boardStatus: string;
+      totalRaise: number;
       totalPref: number;
       founderPayout50: number;
       founderPayout100: number;
       founderPayout200: number;
     }>
   >([]);
+  const [savingMode, setSavingMode] = useState(false);
+  const [newScenarioName, setNewScenarioName] = useState("");
 
   const updateRound = (k: RoundKey, patch: Partial<RoundConfig>) => {
     if (readOnly) return;
@@ -98,6 +102,35 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
     if (readOnly) return;
     const current = state.vesting?.[name] ?? DEFAULT_VESTING;
     onChange({ ...state, vesting: { ...state.vesting, [name]: { ...current, ...patch } } });
+  };
+
+  const saveScenario = () => {
+    if (!newScenarioName.trim() || !anyRoundsEnabled) return;
+    const boardStatus =
+      latest.vcSeats > founderSeats ? "VC-controlled"
+      : latest.vcSeats === founderSeats && latest.vcSeats > 0 ? "Tied"
+      : "Founder-ctrl";
+    const minPayoutAt = (ev: number) => {
+      const s2 = computeSnaps({ ...state, exitValue: ev });
+      const l2 = latestSnap(s2);
+      const fp2 = founderPayouts(l2, ev, state.usePref);
+      if (!fp2.length) return 0;
+      return fp2.reduce((m, f) => (f.payout < m ? f.payout : m), fp2[0].payout);
+    };
+    const next = {
+      name: newScenarioName.trim(),
+      founderPct, vcPct, vcSeats: latest.vcSeats,
+      boardStatus, totalRaise: totalInvested, totalPref,
+      founderPayout50: minPayoutAt(50),
+      founderPayout100: minPayoutAt(100),
+      founderPayout200: minPayoutAt(200),
+    };
+    setSavedScenarios((prev) => {
+      const arr = [...prev, next];
+      return arr.length <= 3 ? arr : arr.slice(arr.length - 3);
+    });
+    setSavingMode(false);
+    setNewScenarioName("");
   };
 
   // Pre-funding cap table (custom or default)
@@ -2186,277 +2219,541 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
 
         {/* ── COMPARE ── */}
         <TabsContent value="compare" className="space-y-3 mt-4">
+          {/* Save UI */}
           <Card className="p-4">
-            <div className="font-bold text-sm">📊 Scenario Comparison Engine</div>
-            <div className="text-xs text-muted-foreground mt-1">
-              Save a snapshot of your current scenario, then tweak terms and compare side-by-side. Up to 3 saved scenarios.
+            <div className="flex items-center justify-between mb-1">
+              <div className="font-bold text-sm">📊 Scenario Comparison</div>
+              <div className="text-[11px] text-muted-foreground">{savedScenarios.length}/3 saved</div>
             </div>
-
-            <div className="mt-3 flex flex-wrap items-center gap-2">
+            <p className="text-xs text-muted-foreground mb-3">
+              Save your current setup as a named scenario, then tweak round terms and save again. Compare side-by-side to find the best deal structure for your founders.
+            </p>
+            {!savingMode ? (
               <button
-                className="px-3 py-2 rounded-md bg-foreground text-background text-xs font-bold disabled:opacity-50"
-                disabled={!anyRoundsEnabled}
-                onClick={() => {
-                  if (!anyRoundsEnabled) return;
-                  const name = window.prompt("Scenario name?");
-                  if (!name) return;
-
-                  const minFounderPayoutAt = (exitVal: number) => {
-                    const snaps2 = computeSnaps({ ...state, exitValue: exitVal });
-                    const latest2 = latestSnap(snaps2);
-                    const payouts2 = founderPayouts(latest2, exitVal, state.usePref);
-                    if (!payouts2.length) return 0;
-                    return payouts2.reduce((min, f) => (f.payout < min ? f.payout : min), payouts2[0].payout);
-                  };
-
-                  const next = {
-                    name,
-                    founderPct,
-                    vcPct,
-                    vcSeats: latest.vcSeats,
-                    totalPref,
-                    founderPayout50: minFounderPayoutAt(50),
-                    founderPayout100: minFounderPayoutAt(100),
-                    founderPayout200: minFounderPayoutAt(200),
-                  };
-
-                  setSavedScenarios((prev) => {
-                    const arr = [...prev, next];
-                    if (arr.length <= 3) return arr;
-                    return arr.slice(arr.length - 3);
-                  });
-                }}
+                className="px-3 py-2 rounded-md bg-foreground text-background text-xs font-bold disabled:opacity-40"
+                disabled={!anyRoundsEnabled || savedScenarios.length >= 3}
+                onClick={() => { setSavingMode(true); setNewScenarioName(""); }}
               >
                 📸 Save Current as Scenario
               </button>
-
-              {savedScenarios.length > 0 && (
+            ) : (
+              <div className="flex items-center gap-2 flex-wrap">
+                <Input
+                  autoFocus
+                  value={newScenarioName}
+                  onChange={(e) => setNewScenarioName(e.target.value)}
+                  placeholder='e.g. "Aggressive Seed" or "Negotiated Series A"'
+                  className="h-8 text-xs flex-1 min-w-[180px]"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newScenarioName.trim()) saveScenario();
+                    if (e.key === "Escape") setSavingMode(false);
+                  }}
+                />
                 <button
-                  className="px-3 py-2 rounded-md border border-border text-xs font-bold"
+                  className="px-3 py-1.5 rounded-md bg-foreground text-background text-xs font-bold disabled:opacity-40"
+                  disabled={!newScenarioName.trim()}
+                  onClick={saveScenario}
+                >
+                  Save
+                </button>
+                <button
+                  className="px-3 py-1.5 rounded-md border text-xs"
+                  onClick={() => setSavingMode(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+            {savedScenarios.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {savedScenarios.map((s, i) => (
+                  <div key={i} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted text-xs font-medium border">
+                    <span>{s.name}</span>
+                    <span className="text-muted-foreground">·</span>
+                    <span className="text-primary font-semibold">{s.founderPct.toFixed(1)}%</span>
+                    <button
+                      className="text-muted-foreground hover:text-foreground ml-0.5 leading-none"
+                      onClick={() => setSavedScenarios((prev) => prev.filter((_, j) => j !== i))}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                <button
+                  className="px-2.5 py-1 text-xs text-muted-foreground border border-dashed rounded-full hover:border-foreground/40"
                   onClick={() => setSavedScenarios([])}
                 >
-                  Clear
+                  Clear all
                 </button>
-              )}
-            </div>
-
-            {savedScenarios.length === 0 ? (
-              <div className="mt-4 text-sm text-muted-foreground">
-                Enable funding rounds in the Rounds tab, then save a scenario to start comparing.
               </div>
-            ) : (
-              <div className="mt-4 overflow-auto">
-                {(() => {
-                  const live = {
-                    name: "Live (current)",
-                    founderPct,
-                    vcPct,
-                    vcSeats: latest.vcSeats,
-                    totalPref,
-                    founderPayout50: (() => {
-                      const snaps2 = computeSnaps({ ...state, exitValue: 50 });
-                      const latest2 = latestSnap(snaps2);
-                      const payouts2 = founderPayouts(latest2, 50, state.usePref);
-                      if (!payouts2.length) return 0;
-                      return payouts2.reduce((min, f) => (f.payout < min ? f.payout : min), payouts2[0].payout);
-                    })(),
-                    founderPayout100: (() => {
-                      const snaps2 = computeSnaps({ ...state, exitValue: 100 });
-                      const latest2 = latestSnap(snaps2);
-                      const payouts2 = founderPayouts(latest2, 100, state.usePref);
-                      if (!payouts2.length) return 0;
-                      return payouts2.reduce((min, f) => (f.payout < min ? f.payout : min), payouts2[0].payout);
-                    })(),
-                    founderPayout200: (() => {
-                      const snaps2 = computeSnaps({ ...state, exitValue: 200 });
-                      const latest2 = latestSnap(snaps2);
-                      const payouts2 = founderPayouts(latest2, 200, state.usePref);
-                      if (!payouts2.length) return 0;
-                      return payouts2.reduce((min, f) => (f.payout < min ? f.payout : min), payouts2[0].payout);
-                    })(),
-                  };
+            )}
+            {!anyRoundsEnabled && (
+              <p className="mt-3 text-xs text-muted-foreground">Enable funding rounds in the Rounds tab first, then save a scenario here.</p>
+            )}
+          </Card>
 
-                  const cols = [...savedScenarios, live];
-                  const maxOf = (k: keyof typeof live) => Math.max(...cols.map((c) => Number(c[k] as number)));
-                  const minOf = (k: keyof typeof live) => Math.min(...cols.map((c) => Number(c[k] as number)));
-                  const cellCls = (val: number, best: number, worst: number, higherIsBetter: boolean) => {
-                    const isBest = higherIsBetter ? val === best : val === worst;
-                    const isWorst = higherIsBetter ? val === worst : val === best;
-                    return cn(isBest && "bg-emerald-500/10", isWorst && "bg-red-500/10");
-                  };
+          {savedScenarios.length > 0 && (() => {
+            const minPayoutAt = (ev: number) => {
+              const s2 = computeSnaps({ ...state, exitValue: ev });
+              const l2 = latestSnap(s2);
+              const fp2 = founderPayouts(l2, ev, state.usePref);
+              if (!fp2.length) return 0;
+              return fp2.reduce((m, f) => (f.payout < m ? f.payout : m), fp2[0].payout);
+            };
+            const liveBoardStatus =
+              latest.vcSeats > founderSeats ? "VC-controlled"
+              : latest.vcSeats === founderSeats && latest.vcSeats > 0 ? "Tied"
+              : "Founder-ctrl";
+            const live = {
+              name: "Current ★",
+              founderPct, vcPct,
+              vcSeats: latest.vcSeats,
+              boardStatus: liveBoardStatus,
+              totalRaise: totalInvested,
+              totalPref,
+              founderPayout50:  minPayoutAt(50),
+              founderPayout100: minPayoutAt(100),
+              founderPayout200: minPayoutAt(200),
+            };
+            const cols = [...savedScenarios, live];
+            const COMPARE_COLORS = ["#4361ee", "#7209b7", "#f72585", "#4cc9f0"];
 
-                  return (
-                    <table className="w-full text-sm border-collapse">
+            const barData = [
+              { label: "$50M exit",  ...Object.fromEntries(cols.map((c) => [c.name, parseFloat(c.founderPayout50.toFixed(2))])) },
+              { label: "$100M exit", ...Object.fromEntries(cols.map((c) => [c.name, parseFloat(c.founderPayout100.toFixed(2))])) },
+              { label: "$200M exit", ...Object.fromEntries(cols.map((c) => [c.name, parseFloat(c.founderPayout200.toFixed(2))])) },
+            ];
+
+            type ColKey = "founderPct" | "vcPct" | "vcSeats" | "totalRaise" | "totalPref" | "founderPayout50" | "founderPayout100" | "founderPayout200";
+            const maxOf = (k: ColKey) => Math.max(...cols.map((c) => Number(c[k])));
+            const minOf = (k: ColKey) => Math.min(...cols.map((c) => Number(c[k])));
+            const cellCls = (val: number, best: number, worst: number, hib: boolean) => {
+              if (cols.length < 2) return "";
+              const isBest  = hib ? val === best  && val !== worst : val === worst && val !== best;
+              const isWorst = hib ? val === worst && val !== best  : val === best  && val !== worst;
+              return cn(isBest && "bg-emerald-500/10 text-emerald-700 font-bold", isWorst && "bg-red-500/10 text-red-700");
+            };
+
+            const rows: Array<{ label: string; key: ColKey; fmt: (v: number) => string; hib: boolean | null }> = [
+              { label: "Founder Equity",       key: "founderPct",      fmt: (v) => v.toFixed(1) + "%",  hib: true  },
+              { label: "VC Stake",              key: "vcPct",           fmt: (v) => v.toFixed(1) + "%",  hib: false },
+              { label: "VC Board Seats",        key: "vcSeats",         fmt: (v) => String(v),           hib: false },
+              { label: "Total Raised",          key: "totalRaise",      fmt: (v) => fmtM(v),             hib: null  },
+              { label: "Pref Overhang",         key: "totalPref",       fmt: (v) => fmtM(v),             hib: false },
+              { label: "Founder take-home @$50M",  key: "founderPayout50",  fmt: (v) => fmtM(v), hib: true },
+              { label: "Founder take-home @$100M", key: "founderPayout100", fmt: (v) => fmtM(v), hib: true },
+              { label: "Founder take-home @$200M", key: "founderPayout200", fmt: (v) => fmtM(v), hib: true },
+            ];
+
+            return (
+              <>
+                {/* Payout bar chart */}
+                <Card className="p-4">
+                  <div className="font-semibold text-sm mb-1">💰 Founder Take-Home by Exit Size</div>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Lowest individual founder payout across scenarios — the floor, not the average.
+                  </p>
+                  <div className="h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={barData} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                        <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => "$" + v + "M"} />
+                        <RechartsTooltip formatter={(v: number) => ["$" + v + "M", ""]} />
+                        <Legend wrapperStyle={{ fontSize: "10px" }} />
+                        {cols.map((c, i) => (
+                          <Bar
+                            key={c.name}
+                            dataKey={c.name}
+                            fill={COMPARE_COLORS[i % COMPARE_COLORS.length]}
+                            radius={[3, 3, 0, 0]}
+                            opacity={c.name === live.name ? 1 : 0.75}
+                          />
+                        ))}
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </Card>
+
+                {/* Delta summary row */}
+                {cols.length >= 2 && (
+                  <Card className="p-4">
+                    <div className="font-semibold text-sm mb-3">📐 How Scenarios Differ from Current</div>
+                    <div className="space-y-2">
+                      {savedScenarios.map((s) => {
+                        const dEq    = (s.founderPct - founderPct).toFixed(1);
+                        const dPref  = (s.totalPref  - totalPref).toFixed(1);
+                        const dP100  = (s.founderPayout100 - live.founderPayout100).toFixed(1);
+                        const dSeats = s.vcSeats - live.vcSeats;
+                        const fmt = (n: string, unit: string) => {
+                          const v = parseFloat(n);
+                          const sign = v > 0 ? "+" : "";
+                          const cls = v > 0 ? "text-emerald-600" : v < 0 ? "text-red-600" : "text-muted-foreground";
+                          return <span className={cls}>{sign}{n}{unit}</span>;
+                        };
+                        return (
+                          <div key={s.name} className="flex items-start gap-3 text-xs border-b pb-2 last:border-0 last:pb-0">
+                            <span className="font-semibold w-28 shrink-0 mt-0.5">{s.name}</span>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1">
+                              <span>Founder equity {fmt(dEq, "pp")}</span>
+                              <span>Pref overhang {fmt(dPref, "M")}</span>
+                              <span>VC seats {fmt(String(dSeats), "")}</span>
+                              <span>Take-home @$100M {fmt(dP100, "M")}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </Card>
+                )}
+
+                {/* Comparison table */}
+                <Card className="p-4">
+                  <div className="font-semibold text-sm mb-3">📋 Side-by-Side Metrics</div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs border-collapse">
                       <thead>
-                        <tr className="text-[10px] uppercase text-muted-foreground border-b">
+                        <tr className="border-b text-[10px] uppercase text-muted-foreground">
                           <th className="text-left py-2 pr-3">Metric</th>
-                          {cols.map((c) => (
-                            <th key={c.name} className="text-right py-2 px-2 whitespace-nowrap">{c.name}</th>
+                          {cols.map((c, i) => (
+                            <th
+                              key={c.name}
+                              className={cn(
+                                "text-right py-2 px-2 whitespace-nowrap",
+                                i === cols.length - 1 && "text-primary",
+                              )}
+                            >
+                              {c.name}
+                            </th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {(() => {
-                          const rows = [
-                            { label: "Founder Equity", key: "founderPct" as const, fmt: (v: number) => v.toFixed(1) + "%", higherIsBetter: true },
-                            { label: "VC Stake", key: "vcPct" as const, fmt: (v: number) => v.toFixed(1) + "%", higherIsBetter: false },
-                            { label: "Board Control (VC seats)", key: "vcSeats" as const, fmt: (v: number) => String(v), higherIsBetter: false },
-                            { label: "Pref Overhang", key: "totalPref" as const, fmt: (v: number) => fmtM(v), higherIsBetter: false },
-                            { label: "Founder take-home @$50M", key: "founderPayout50" as const, fmt: (v: number) => fmtM(v), higherIsBetter: true },
-                            { label: "Founder take-home @$100M", key: "founderPayout100" as const, fmt: (v: number) => fmtM(v), higherIsBetter: true },
-                            { label: "Founder take-home @$200M", key: "founderPayout200" as const, fmt: (v: number) => fmtM(v), higherIsBetter: true },
-                          ];
-
-                          return rows.map((r) => {
-                            const best = r.higherIsBetter ? maxOf(r.key) : minOf(r.key);
-                            const worst = r.higherIsBetter ? minOf(r.key) : maxOf(r.key);
-                            return (
-                              <tr key={r.label} className="border-b last:border-0">
-                                <td className="py-2 pr-3 font-semibold">{r.label}</td>
-                                {cols.map((c) => {
-                                  const val = Number(c[r.key] as number);
-                                  return (
-                                    <td key={c.name + r.label} className={cn("py-2 px-2 text-right", cellCls(val, best, worst, r.higherIsBetter))}>
-                                      {r.fmt(val)}
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            );
-                          });
-                        })()}
+                        {rows.map((r) => {
+                          const best  = r.hib !== null ? (r.hib  ? maxOf(r.key) : minOf(r.key)) : -1;
+                          const worst = r.hib !== null ? (!r.hib ? maxOf(r.key) : minOf(r.key)) : -1;
+                          return (
+                            <tr key={r.label} className="border-b last:border-0 hover:bg-muted/30">
+                              <td className="py-2 pr-3 font-semibold whitespace-nowrap text-[11px]">{r.label}</td>
+                              {cols.map((c, i) => {
+                                const val = Number(c[r.key]);
+                                return (
+                                  <td
+                                    key={c.name + r.label}
+                                    className={cn(
+                                      "py-2 px-2 text-right",
+                                      r.hib !== null && cellCls(val, best, worst, r.hib!),
+                                      i === cols.length - 1 && "border-l border-primary/20",
+                                    )}
+                                  >
+                                    {r.fmt(val)}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
+                        <tr className="border-b last:border-0 hover:bg-muted/30">
+                          <td className="py-2 pr-3 font-semibold whitespace-nowrap text-[11px]">Board Control</td>
+                          {cols.map((c, i) => (
+                            <td
+                              key={c.name + "board"}
+                              className={cn(
+                                "py-2 px-2 text-right text-[11px]",
+                                c.boardStatus === "Founder-ctrl" ? "text-emerald-700 font-bold"
+                                  : c.boardStatus === "Tied" ? "text-amber-700 font-bold"
+                                  : "text-red-700 font-bold",
+                                i === cols.length - 1 && "border-l border-primary/20",
+                              )}
+                            >
+                              {c.boardStatus}
+                            </td>
+                          ))}
+                        </tr>
                       </tbody>
                     </table>
-                  );
-                })()}
-              </div>
-            )}
-          </Card>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-4 text-[10px] text-muted-foreground">
+                    <span><span className="text-emerald-600 font-bold">Green</span> = best value across scenarios</span>
+                    <span><span className="text-red-600 font-bold">Red</span> = worst value</span>
+                    <span><span className="text-primary font-bold">★ Current</span> = live (unsaved) scenario</span>
+                  </div>
+                </Card>
+              </>
+            );
+          })()}
         </TabsContent>
 
         {/* ── EXIT ── */}
         <TabsContent value="exit" className="space-y-3 mt-4">
+
+          {/* Controls */}
           <Card className="p-4">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Label className="text-xs font-semibold">Exit Valuation: {fmtM(state.exitValue)}</Label>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">?</button>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-[220px] text-xs">
-                    <p className="font-bold text-primary mb-1">Exit Valuation</p>
-                    <p>The acquisition or IPO price you're modelling. Drag to see how founder payouts change at different exit sizes.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+            <div className="flex items-center justify-between mb-2">
+              <div className="font-bold text-sm">💰 Exit Waterfall Modeller</div>
+              <div className="text-[11px] text-muted-foreground">{isUS ? "Delaware waterfall" : "India SHA waterfall"}</div>
             </div>
-            <Slider
-              min={1}
-              max={500}
-              step={1}
-              value={[state.exitValue]}
-              disabled={readOnly}
-              onValueChange={(v) => onChange({ ...state, exitValue: v[0] })}
-              className="mt-3"
-            />
-            <Input
-              type="number"
-              value={state.exitValue}
-              disabled={readOnly}
-              onChange={(e) => onChange({ ...state, exitValue: parseFloat(e.target.value) || 0 })}
-              className="mt-3"
-            />
-            <div className="flex items-center gap-3 mt-3 p-2 bg-muted rounded-md">
-              <Switch checked={state.usePref} disabled={readOnly} onCheckedChange={(v) => onChange({ ...state, usePref: v })} />
-              <div className="flex items-center gap-1.5">
-                <Label className="text-xs">Apply liquidation preferences</Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">?</button>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-[220px] text-xs">
-                      <p className="font-bold text-primary mb-1">Liquidation Preferences</p>
-                      <p>Toggle on to see realistic founder take-home after VCs are paid first. Toggle off to see naive pro-rata split.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+            <p className="text-xs text-muted-foreground mb-3">
+              Drag the slider to model any exit. Toggle preferences to see the real vs. naive payout split.
+            </p>
+            <div className="flex items-center gap-1.5 mb-1">
+              <Label className="text-xs font-semibold">Exit / Acquisition Value</Label>
+            </div>
+            <div className="flex items-center gap-3 mt-1">
+              <Slider
+                min={1} max={500} step={1}
+                value={[state.exitValue]}
+                disabled={readOnly}
+                onValueChange={(v) => onChange({ ...state, exitValue: v[0] })}
+                className="flex-1"
+              />
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-muted-foreground">$</span>
+                <Input
+                  type="number"
+                  value={state.exitValue}
+                  disabled={readOnly}
+                  onChange={(e) => onChange({ ...state, exitValue: parseFloat(e.target.value) || 0 })}
+                  className="w-20 h-8 text-sm"
+                />
+                <span className="text-xs text-muted-foreground">M</span>
               </div>
             </div>
+            <div className="flex items-center gap-3 mt-3 p-2.5 bg-muted/50 rounded-md">
+              <Switch checked={state.usePref} disabled={readOnly} onCheckedChange={(v) => onChange({ ...state, usePref: v })} />
+              <div>
+                <Label className="text-xs font-semibold">Apply liquidation preferences</Label>
+                <p className="text-[10px] text-muted-foreground">Off = naive pro-rata split. On = VCs paid first per SHA waterfall.</p>
+              </div>
+            </div>
+            {state.exitValue <= totalPref && state.usePref && totalPref > 0 && (
+              <div className="mt-3 p-2.5 rounded-md bg-red-500/10 border border-red-500/30 text-xs text-red-700 font-semibold">
+                ⚠️ Exit {fmtM(state.exitValue)} is below the {fmtM(totalPref)} liquidation preference stack — founders receive $0. Need at least {fmtM(totalPref + 0.1)} for any founder payout.
+              </div>
+            )}
           </Card>
 
-          {state.exitValue <= totalPref && state.usePref && totalPref > 0 && (
-            <Card className="p-3 bg-danger/10 border-danger/30">
-              <div className="text-xs font-bold text-danger">⚠️ Exit value is below total liquidation preferences. Founders receive nothing.</div>
+          {/* Key metrics row */}
+          {(() => {
+            const noPrefs = founderPayouts(latest, state.exitValue, false, false, {}, true);
+            const withPrefs = founderPayouts(latest, state.exitValue, true, false, {}, true);
+            const noPrefsTotal = noPrefs.reduce((s, f) => s + f.payout, 0);
+            const withPrefsTotal = withPrefs.reduce((s, f) => s + f.payout, 0);
+            const prefCost = noPrefsTotal - withPrefsTotal;
+            const vcReturnMult = totalInvested > 0 ? (vcTotal / totalInvested).toFixed(2) + "×" : "—";
+            return (
+              <div className="grid grid-cols-2 gap-3">
+                <Card className="p-3">
+                  <div className="text-[10px] uppercase text-muted-foreground font-semibold">Founders Take-Home</div>
+                  <div className="text-xl font-extrabold mt-1 text-primary">{fmtM(founderTotal)}</div>
+                  <div className="text-[10px] text-muted-foreground">at {fmtM(state.exitValue)} exit · {founderTotal > 0 ? ((founderTotal / state.exitValue) * 100).toFixed(0) + "% of proceeds" : "below pref floor"}</div>
+                </Card>
+                <Card className="p-3">
+                  <div className="text-[10px] uppercase text-muted-foreground font-semibold">VC Return</div>
+                  <div className="text-xl font-extrabold mt-1">{vcReturnMult}</div>
+                  <div className="text-[10px] text-muted-foreground">{fmtM(totalInvested)} invested · {fmtM(vcTotal)} returned</div>
+                </Card>
+                <Card className="p-3">
+                  <div className="text-[10px] uppercase text-muted-foreground font-semibold">Pref Overhang</div>
+                  <div className="text-xl font-extrabold mt-1">{fmtM(state.usePref ? totalPref : 0)}</div>
+                  <div className="text-[10px] text-muted-foreground">{state.usePref ? "paid before any founder dollar" : "preferences off"}</div>
+                </Card>
+                <Card className="p-3">
+                  <div className="text-[10px] uppercase text-muted-foreground font-semibold">Pref Cost to Founders</div>
+                  <div className={cn("text-xl font-extrabold mt-1", prefCost > 0 ? "text-red-600" : "text-emerald-600")}>
+                    {prefCost > 0 ? "-" : ""}{fmtM(prefCost)}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">vs. no-preference scenario</div>
+                </Card>
+              </div>
+            );
+          })()}
+
+          {/* Exit scenarios at a glance */}
+          {anyRoundsEnabled && (() => {
+            const presets = [25, 50, 100, 200, 500];
+            return (
+              <Card className="p-4">
+                <div className="font-semibold text-sm mb-1">📌 Exit Scenarios at a Glance</div>
+                <p className="text-xs text-muted-foreground mb-3">Founder total and VC return multiple at five benchmark exit values. {state.usePref ? "Liquidation preferences applied." : "No preferences applied."}</p>
+                <div className="grid grid-cols-5 gap-2">
+                  {presets.map((ev) => {
+                    const ap = calcPayouts(latest, ev, state.usePref);
+                    const fp2 = founderPayouts(latest, ev, state.usePref, state.vestingEnabled ?? false, state.vesting ?? {}, state.accelerationAtExit ?? true);
+                    const fTot = fp2.reduce((s, f) => s + f.payout, 0);
+                    const vcTot = latest.holders.filter((h) => h.type === "vc" || h.type === "safe").reduce((s, h) => s + (ap[h.name] || 0), 0);
+                    const mult = totalInvested > 0 ? (vcTot / totalInvested).toFixed(1) + "×" : "—";
+                    const isCurrent = ev === state.exitValue;
+                    const belowPref = state.usePref && ev <= totalPref && totalPref > 0;
+                    return (
+                      <button
+                        key={ev}
+                        onClick={() => onChange({ ...state, exitValue: ev })}
+                        className={cn(
+                          "flex flex-col items-center p-2.5 rounded-lg border text-center transition-colors",
+                          isCurrent ? "border-primary bg-primary/8" : "border-border hover:border-primary/40",
+                        )}
+                      >
+                        <div className={cn("text-[11px] font-bold", isCurrent ? "text-primary" : "text-foreground")}>${ev}M</div>
+                        <div className={cn("text-base font-extrabold mt-1", belowPref ? "text-red-500" : "text-foreground")}>
+                          {belowPref ? "$0" : fmtM(fTot)}
+                        </div>
+                        <div className="text-[9px] text-muted-foreground mt-0.5">founders</div>
+                        <div className="text-[10px] font-semibold text-muted-foreground mt-1">{mult}</div>
+                        <div className="text-[9px] text-muted-foreground">VC return</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </Card>
+            );
+          })()}
+
+          {/* Payout waterfall line chart */}
+          {anyRoundsEnabled && (() => {
+            const exitPoints = [0, 10, 20, 30, 40, 50, 75, 100, 125, 150, 200, 300, 500].filter((v) => v <= Math.max(state.exitValue * 2, 200));
+            if (exitPoints[exitPoints.length - 1] < state.exitValue) exitPoints.push(state.exitValue);
+            const wfData = exitPoints.map((ev) => {
+              const ap = calcPayouts(latest, ev, state.usePref);
+              const fp2 = founderPayouts(latest, ev, state.usePref, state.vestingEnabled ?? false, state.vesting ?? {}, state.accelerationAtExit ?? true);
+              const fTot = parseFloat(fp2.reduce((s, f) => s + f.payout, 0).toFixed(2));
+              const vcTot = parseFloat(latest.holders.filter((h) => h.type === "vc" || h.type === "safe").reduce((s, h) => s + (ap[h.name] || 0), 0).toFixed(2));
+              const apNoPref = calcPayouts(latest, ev, false);
+              const fp2NP = founderPayouts(latest, ev, false, false, {}, true);
+              const fNoPref = parseFloat(fp2NP.reduce((s, f) => s + f.payout, 0).toFixed(2));
+              return { exit: ev, Founders: fTot, VCs: vcTot, "No-pref (founders)": fNoPref };
+            });
+            return (
+              <Card className="p-4">
+                <div className="font-semibold text-sm mb-1">📈 Payout Curve</div>
+                <p className="text-xs text-muted-foreground mb-4">
+                  How founder and VC payouts grow with exit size.
+                  {state.usePref && totalPref > 0 && ` Founders receive $0 until exit exceeds the ${fmtM(totalPref)} preference stack.`}
+                </p>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={wfData} margin={{ top: 4, right: 12, left: 0, bottom: 4 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="exit" tick={{ fontSize: 10 }} tickFormatter={(v) => "$" + v + "M"} />
+                      <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => "$" + v + "M"} />
+                      <RechartsTooltip formatter={(v: number) => "$" + v + "M"} labelFormatter={(v) => "Exit: $" + v + "M"} />
+                      <Legend wrapperStyle={{ fontSize: "10px" }} />
+                      <ReferenceLine x={state.exitValue} stroke="#94a3b8" strokeDasharray="4 2" label={{ value: "Now", position: "top", fontSize: 9, fill: "#64748b" }} />
+                      {state.usePref && totalPref > 0 && (
+                        <ReferenceLine x={totalPref} stroke="#ef4444" strokeDasharray="3 2" label={{ value: "Pref floor", position: "insideTopLeft", fontSize: 9, fill: "#ef4444" }} />
+                      )}
+                      <Line type="monotone" dataKey="Founders" stroke="#4361ee" strokeWidth={2.5} dot={false} />
+                      <Line type="monotone" dataKey="VCs" stroke="#e17055" strokeWidth={2} dot={false} />
+                      {state.usePref && totalPref > 0 && (
+                        <Line type="monotone" dataKey="No-pref (founders)" stroke="#4361ee" strokeWidth={1.5} strokeDasharray="5 3" dot={false} opacity={0.4} />
+                      )}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+                {state.usePref && totalPref > 0 && (
+                  <div className="mt-2 text-[10px] text-muted-foreground">Dashed blue = founders without preferences. Gap between solid and dashed = what VCs' liquidation preferences cost you.</div>
+                )}
+              </Card>
+            );
+          })()}
+
+          {/* Individual payouts */}
+          <Card className="p-4">
+            <div className="font-semibold text-sm mb-3">🧾 Individual Payouts at {fmtM(state.exitValue)}</div>
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b text-[10px] uppercase text-muted-foreground">
+                  <th className="text-left py-1.5 pr-2">Name</th>
+                  <th className="text-left py-1.5 pr-2">Role</th>
+                  <th className="text-right py-1.5 pr-2">Equity</th>
+                  <th className="text-right py-1.5">Payout</th>
+                  {state.vestingEnabled && <th className="text-right py-1.5 pl-2">Vesting</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {fPayouts.map((f) => {
+                  const vestedPct = Math.round(f.vestedFraction * 100);
+                  const accelerated = state.accelerationAtExit ?? true;
+                  const h = latest.holders.find((x) => x.name === f.name);
+                  return (
+                    <tr key={f.name} className="border-b last:border-0">
+                      <td className="py-2 pr-2 font-semibold" style={{ color: HOLDER_COLORS[f.name] }}>{f.name}</td>
+                      <td className="py-2 pr-2 text-muted-foreground">{f.role}</td>
+                      <td className="py-2 pr-2 text-right">{h ? h.pct.toFixed(1) + "%" : "—"}</td>
+                      <td className="py-2 text-right font-bold">{fmtM(f.payout)}</td>
+                      {state.vestingEnabled && (
+                        <td className="py-2 pl-2 text-right">
+                          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold"
+                            style={{ backgroundColor: accelerated ? "#dcfce7" : vestedPct < 50 ? "#fee2e2" : "#fef9c3", color: accelerated ? "#16a34a" : vestedPct < 50 ? "#dc2626" : "#92400e" }}>
+                            {accelerated ? "⚡ Accel." : `${vestedPct}%`}
+                          </span>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+                {latest.holders.filter((h) => h.type === "vc" || h.type === "safe").map((h) => {
+                  const payout = allPayouts[h.name] || 0;
+                  if (payout === 0 && !anyRoundsEnabled) return null;
+                  const rd = latest.roundData.find((r) => r.vcName === h.name);
+                  const mult = rd && rd.investment > 0 ? (payout / rd.investment).toFixed(1) + "×" : "—";
+                  return (
+                    <tr key={h.name} className="border-b last:border-0 bg-muted/20">
+                      <td className="py-2 pr-2 font-semibold text-muted-foreground">{h.name}</td>
+                      <td className="py-2 pr-2 text-muted-foreground text-[10px]">Investor</td>
+                      <td className="py-2 pr-2 text-right text-muted-foreground">{h.pct.toFixed(1)}%</td>
+                      <td className="py-2 text-right font-bold text-muted-foreground">{fmtM(payout)}</td>
+                      {state.vestingEnabled && <td className="py-2 pl-2 text-right text-muted-foreground">{mult}</td>}
+                    </tr>
+                  );
+                }).filter(Boolean)}
+              </tbody>
+            </table>
+          </Card>
+
+          {/* Per-round VC return breakdown */}
+          {latest.roundData.filter((r) => r.type === "vc").length > 0 && (
+            <Card className="p-4">
+              <div className="font-semibold text-sm mb-3">📊 VC Round Returns at {fmtM(state.exitValue)}</div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b text-[10px] uppercase text-muted-foreground">
+                      <th className="text-left py-1.5 pr-3">Investor</th>
+                      <th className="text-right py-1.5 px-2">Invested</th>
+                      <th className="text-right py-1.5 px-2">Pref (1st dollar)</th>
+                      <th className="text-right py-1.5 px-2">Payout</th>
+                      <th className="text-right py-1.5 pl-2">Return</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {latest.roundData.filter((r) => r.type === "vc").map((r) => {
+                      const payout = allPayouts[r.vcName] || 0;
+                      const mult = r.investment > 0 ? payout / r.investment : 0;
+                      const pref = r.investment * r.prefMult;
+                      return (
+                        <tr key={r.vcName} className="border-b last:border-0">
+                          <td className="py-2 pr-3 font-semibold">{r.vcName}</td>
+                          <td className="py-2 px-2 text-right">{fmtM(r.investment)}</td>
+                          <td className="py-2 px-2 text-right text-muted-foreground">
+                            {r.prefMult > 1 ? <span className="text-red-600 font-semibold">{fmtM(pref)} ({r.prefMult}×)</span> : fmtM(pref)}
+                          </td>
+                          <td className="py-2 px-2 text-right font-bold">{fmtM(payout)}</td>
+                          <td className={cn("py-2 pl-2 text-right font-bold", mult >= 3 ? "text-emerald-600" : mult >= 1 ? "text-foreground" : "text-red-600")}>
+                            {mult.toFixed(1)}×
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-2 text-[10px] text-muted-foreground">
+                {isUS ? "Return = payout ÷ investment. VCs targeting 3× fund-level returns need individual deals at 5–10×." : "Return = payout ÷ investment. India VCs typically target 5–8× on individual investments to hit 3× fund-level returns."}
+              </div>
             </Card>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <Card className="p-3">
-              <div className="text-[10px] uppercase text-muted-foreground font-semibold">VC Overhang</div>
-              <div className="text-lg font-extrabold mt-1">{fmtM(state.usePref ? totalPref : 0)}</div>
-              <div className="text-[10px] text-muted-foreground">Paid before founders</div>
-            </Card>
-            <Card className="p-3">
-              <div className="text-[10px] uppercase text-muted-foreground font-semibold">Founders Total</div>
-              <div className="text-lg font-extrabold mt-1">{fmtM(founderTotal)}</div>
-              <div className="text-[10px] text-muted-foreground">Combined take-home</div>
-            </Card>
-            <Card className="p-3 col-span-2">
-              {/* BUG FIX 5 — Individual Payouts table instead of avg */}
-              <div className="text-[10px] uppercase text-muted-foreground font-semibold mb-2">Individual Payouts</div>
-              <table className="w-full text-xs">
-                <tbody>
-                  {fPayouts.map((f) => {
-                    const vestingEnabled = state.vestingEnabled ?? false;
-                    const accelerated = state.accelerationAtExit ?? true;
-                    const showVesting = vestingEnabled;
-                    const vestedPct = Math.round(f.vestedFraction * 100);
-                    return (
-                      <tr key={f.name} className="border-b last:border-0">
-                        <td className="py-1.5">
-                          <strong>{f.name}</strong>{" "}
-                          <span className="text-muted-foreground">({f.role})</span>
-                          {showVesting && (
-                            <span className="ml-2 inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold"
-                              style={{ backgroundColor: accelerated ? "#dcfce7" : vestedPct < 50 ? "#fee2e2" : "#fef9c3", color: accelerated ? "#16a34a" : vestedPct < 50 ? "#dc2626" : "#92400e" }}>
-                              {accelerated ? "⚡ Accelerated" : `${vestedPct}% vested`}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-1.5 text-right font-bold" style={{ color: HOLDER_COLORS[f.name] }}>{fmtM(f.payout)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </Card>
-            <Card className="p-3 col-span-2">
-              <div className="text-[10px] uppercase text-muted-foreground font-semibold">VC Return</div>
-              <div className="text-lg font-extrabold mt-1">{totalInvested > 0 ? (vcTotal / totalInvested).toFixed(1) + "×" : "—"}</div>
-              <div className="text-[10px] text-muted-foreground">{totalInvested > 0 ? `${fmtM(totalInvested)} invested` : "No rounds yet"}</div>
-            </Card>
-          </div>
-
-          <Card className="p-4">
-            <div className="font-bold text-sm mb-3">📊 Payout Breakdown</div>
-            <div className="h-64">
-              <ResponsiveContainer>
-                <BarChart data={latest.holders.filter((h) => (allPayouts[h.name] || 0) > 0).map((h) => ({ name: h.name.split(" ")[0], val: allPayouts[h.name] || 0, fullName: h.name }))}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => fmtM(v)} />
-                  <RechartsTooltip formatter={(v: number) => fmtM(v)} />
-                  <Bar dataKey="val" radius={[4, 4, 0, 0]}>
-                    {latest.holders.filter((h) => (allPayouts[h.name] || 0) > 0).map((h, i) => (
-                      <Cell key={i} fill={HOLDER_COLORS[h.name] || "#888"} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
         </TabsContent>
       </Tabs>
     </div>
