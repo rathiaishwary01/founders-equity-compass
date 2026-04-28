@@ -77,17 +77,6 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## Environment Variables
-
-See [`.env.example`](.env.example) for all required variables.
-
-| Variable | Required | Description |
-|---|---|---|
-| `VITE_SUPABASE_URL` | Optional | Your Supabase project URL |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Optional | Your Supabase anon/public key |
-
----
-
 ## Deployment
 
 ```bash
