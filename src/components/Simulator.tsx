@@ -70,6 +70,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
   const [capRound, setCapRound] = useState<string>("pre");
   const activeCap = snaps[capRound] ?? latest;
   const [expertMode, setExpertMode] = useState(false);
+  const [showExport, setShowExport] = useState(false);
   const [activeTab, setActiveTab] = useState("setup");
   const [savedScenarios, setSavedScenarios] = useState<
     Array<{
@@ -729,8 +730,14 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
         </div>
       )}
 
-      {/* Beginner / Expert toggle */}
+      {/* Beginner / Expert toggle + Export */}
       <div className="flex items-center justify-end gap-2">
+        <button
+          onClick={() => setShowExport(true)}
+          className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+        >
+          📤 Export
+        </button>
         <span className={cn("text-xs font-semibold", !expertMode ? "text-primary" : "text-muted-foreground")}>Beginner</span>
         <Switch
           checked={expertMode}
@@ -3235,6 +3242,86 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
 
         </TabsContent>
       </Tabs>
+      {/* ── Export Modal ─────────────────────────────────────────────── */}
+      {showExport && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setShowExport(false)}>
+          <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl bg-background border shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b">
+              <div className="font-bold text-sm">📤 Export Scenario</div>
+              <button onClick={() => setShowExport(false)} className="text-muted-foreground hover:text-foreground text-lg font-bold leading-none">×</button>
+            </div>
+            <div className="p-5 space-y-4">
+              {(() => {
+                const lines: string[] = [];
+                lines.push(`CapStack — ${new Date().toLocaleDateString()} | ${isUS ? "United States" : "India"}`);
+                lines.push("");
+                lines.push("PRE-FUNDING CAP TABLE");
+                founders.forEach((h) => lines.push(`  ${h.name} (${h.role}): ${h.pct.toFixed(1)}%`));
+                if (anyRoundsEnabled) {
+                  lines.push("");
+                  lines.push("ROUNDS");
+                  enabledRounds.forEach((k) => {
+                    const r = state.rounds[k];
+                    const parts = [`$${r.raise}M raise @ $${r.preMoney}M pre`];
+                    if (r.esop > 0) parts.push(`ESOP ${r.esop}%`);
+                    parts.push(`pref ${r.prefMult}× ${r.prefType === "part" ? "part." : "non-part."}`);
+                    parts.push(`anti-dil: ${r.antiDilution}`);
+                    if (r.payToPlay) parts.push("P2P ✓");
+                    if (r.redemptionEnabled) parts.push(`redemption ${r.redemptionYears ?? 5}yr ${r.redemptionMultiple ?? 1}×`);
+                    lines.push(`  ${ROUND_LABELS[k as RoundKey]}: ${parts.join(" · ")}`);
+                  });
+                  lines.push("");
+                  lines.push("POST-FUNDING CAP TABLE");
+                  latest.holders.forEach((h) => lines.push(`  ${h.name}: ${h.pct.toFixed(1)}%`));
+                  lines.push("");
+                  lines.push("EXIT ANALYSIS");
+                  lines.push(`  Exit modelled: ${fmtM(state.exitValue)}`);
+                  lines.push(`  Founder take-home: ${fmtM(founderTotal)}${founderTotal > 0 ? ` (${((founderTotal / state.exitValue) * 100).toFixed(0)}% of proceeds)` : " (below pref floor)"}`);
+                  lines.push(`  VC return: ${totalInvested > 0 ? (vcTotal / totalInvested).toFixed(1) + "×" : "—"} on ${fmtM(totalInvested)} invested`);
+                  lines.push(`  Liquidation overhang: ${fmtM(totalPref)}`);
+                  if (hasRedemption) lines.push(`  Redemption liability: ${fmtM(totalRedemptionLiability)}`);
+                }
+                if (state.safe.enabled) {
+                  lines.push("");
+                  lines.push("SAFE");
+                  lines.push(`  ${fmtM(state.safe.amount)} · ${state.safe.mfn ? "MFN / no cap" : `cap $${state.safe.cap}M · ${state.safe.discount}% discount`}`);
+                }
+                lines.push("");
+                lines.push("PLAYBOOK ACTIONS");
+                recommendations.forEach((r) => lines.push(`  [${r.priority.toUpperCase()} · ${r.timing}] ${r.action}`));
+                return (
+                  <pre className="text-[10px] text-muted-foreground bg-muted/50 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap leading-relaxed font-mono">
+                    {lines.join("\n")}
+                  </pre>
+                );
+              })()}
+              <div className="flex gap-2">
+                <button
+                  id="copy-export-btn"
+                  onClick={() => {
+                    const el = document.getElementById("export-pre-content");
+                    const text = el ? el.textContent || "" : "";
+                    navigator.clipboard.writeText(text).then(() => {
+                      const btn = document.getElementById("copy-export-btn");
+                      if (btn) { btn.textContent = "✅ Copied!"; setTimeout(() => { if(btn) btn.textContent = "📋 Copy"; }, 2000); }
+                    });
+                  }}
+                  className="flex-1 rounded-lg border border-border px-3 py-2.5 text-xs font-semibold hover:bg-muted/60 transition-colors"
+                >
+                  📋 Copy
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  className="flex-1 rounded-lg bg-primary text-primary-foreground px-3 py-2.5 text-xs font-semibold hover:opacity-90 transition-opacity"
+                >
+                  🖨️ Print / Save PDF
+                </button>
+              </div>
+              <p className="text-[10px] text-muted-foreground text-center">Print → "Save as PDF" in destination dropdown</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
