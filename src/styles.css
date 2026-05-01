@@ -1,22 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Instrument+Serif:ital@0;1&display=swap');
+
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
-
-/*
- * Design system definition.
- *
- * The @theme inline block maps CSS custom properties to Tailwind utility
- * classes (e.g. --color-primary -> bg-primary, text-primary).
- *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
- *
- * To add a new semantic color:
- * 1. Add the variable to :root (light value) and .dark (dark value)
- * 2. Register it in @theme inline as --color-<name>: var(--<name>)
- */
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
@@ -71,89 +59,103 @@
 
 :root {
   --radius: 0.75rem;
-  /* Surface */
-  --background: oklch(0.975 0.005 250);
-  --foreground: oklch(0.18 0.04 265);
+
+  /* ── NextSense-inspired palette ── */
+  /* Navy #2B2E3F */ --primary: oklch(0.22 0.04 265);
+  --primary-foreground: oklch(1 0 0);
+  /* Lavender #AAA8FF */ --accent: oklch(0.76 0.15 285);
+  --accent-foreground: oklch(0.22 0.04 265);
+
+  /* Surfaces */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.28 0.03 265);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.04 265);
+  --card-foreground: oklch(0.28 0.03 265);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.04 265);
-  /* Brand: indigo */
-  --primary: oklch(0.55 0.21 270);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.96 0.01 260);
-  --secondary-foreground: oklch(0.25 0.04 265);
-  --muted: oklch(0.96 0.01 260);
-  --muted-foreground: oklch(0.5 0.03 260);
-  --accent: oklch(0.94 0.04 270);
-  --accent-foreground: oklch(0.25 0.05 265);
+  --popover-foreground: oklch(0.28 0.03 265);
+
+  /* Muted surface #F7F6FC */
+  --secondary: oklch(0.975 0.008 285);
+  --secondary-foreground: oklch(0.28 0.03 265);
+  --muted: oklch(0.975 0.008 285);
+  --muted-foreground: oklch(0.52 0.03 265);
+
+  /* Borders — very subtle navy tint */
+  --border: oklch(0.22 0.04 265 / 0.1);
+  --input: oklch(0.22 0.04 265 / 0.12);
+  --ring: oklch(0.76 0.15 285);
+
+  /* Semantic */
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.92 0.013 255);
-  --input: oklch(0.92 0.013 255);
-  --ring: oklch(0.55 0.21 270);
-  /* Semantic status colors */
+  --destructive-foreground: oklch(1 0 0);
   --success: oklch(0.62 0.16 150);
-  --success-foreground: oklch(0.99 0 0);
+  --success-foreground: oklch(1 0 0);
   --warning: oklch(0.75 0.16 75);
   --warning-foreground: oklch(0.2 0.05 50);
   --danger: oklch(0.6 0.22 25);
-  --danger-foreground: oklch(0.99 0 0);
-  /* Brand surfaces */
-  --header-bg: oklch(0.2 0.05 265);
-  --header-fg: oklch(0.99 0 0);
-  --header-gradient: linear-gradient(135deg, oklch(0.18 0.05 265), oklch(0.25 0.08 265), oklch(0.3 0.13 260));
-  --gradient-primary: linear-gradient(135deg, oklch(0.55 0.21 270), oklch(0.65 0.2 285));
-  --shadow-card: 0 1px 4px oklch(0 0 0 / 0.07);
-  --shadow-elevated: 0 8px 24px oklch(0.18 0.04 265 / 0.12);
-  --chart-1: oklch(0.55 0.21 270);
-  --chart-2: oklch(0.6 0.18 30);
+  --danger-foreground: oklch(1 0 0);
+
+  /* Header / hero */
+  --header-bg: oklch(0.22 0.04 265);
+  --header-fg: oklch(1 0 0);
+  /* Lavender-to-periwinkle gradient (NextSense C1CFF8 → AAA8FF) */
+  --header-gradient: linear-gradient(135deg, oklch(0.87 0.07 270) 0%, oklch(0.76 0.15 285) 100%);
+  --gradient-primary: linear-gradient(135deg, oklch(0.22 0.04 265) 0%, oklch(0.35 0.08 270) 100%);
+
+  --shadow-card: 0 1px 3px oklch(0.22 0.04 265 / 0.06), 0 1px 8px oklch(0.22 0.04 265 / 0.04);
+  --shadow-elevated: 0 8px 32px oklch(0.22 0.04 265 / 0.12);
+
+  /* Charts */
+  --chart-1: oklch(0.22 0.04 265);
+  --chart-2: oklch(0.76 0.15 285);
   --chart-3: oklch(0.62 0.16 150);
   --chart-4: oklch(0.75 0.16 75);
-  --chart-5: oklch(0.55 0.18 320);
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.18 0.04 265);
-  --sidebar-primary: oklch(0.55 0.21 270);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.94 0.04 270);
-  --sidebar-accent-foreground: oklch(0.25 0.05 265);
-  --sidebar-border: oklch(0.92 0.013 255);
-  --sidebar-ring: oklch(0.55 0.21 270);
+  --chart-5: oklch(0.6 0.22 25);
+
+  /* Sidebar */
+  --sidebar: oklch(0.975 0.008 285);
+  --sidebar-foreground: oklch(0.28 0.03 265);
+  --sidebar-primary: oklch(0.22 0.04 265);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.76 0.15 285);
+  --sidebar-accent-foreground: oklch(0.22 0.04 265);
+  --sidebar-border: oklch(0.22 0.04 265 / 0.1);
+  --sidebar-ring: oklch(0.76 0.15 285);
 }
 
 .dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
+  --background: oklch(0.14 0.04 265);
+  --foreground: oklch(0.96 0.005 285);
+  --card: oklch(0.19 0.04 265);
+  --card-foreground: oklch(0.96 0.005 285);
+  --popover: oklch(0.19 0.04 265);
+  --popover-foreground: oklch(0.96 0.005 285);
+  --primary: oklch(0.76 0.15 285);
+  --primary-foreground: oklch(0.22 0.04 265);
+  --secondary: oklch(0.25 0.04 265);
+  --secondary-foreground: oklch(0.96 0.005 285);
+  --muted: oklch(0.25 0.04 265);
+  --muted-foreground: oklch(0.65 0.04 270);
+  --accent: oklch(0.76 0.15 285);
+  --accent-foreground: oklch(0.22 0.04 265);
   --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.208 0.042 265.755);
-  --sidebar-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.279 0.041 260.031);
-  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
+  --destructive-foreground: oklch(0.96 0.005 285);
+  --border: oklch(1 0 0 / 0.1);
+  --input: oklch(1 0 0 / 0.12);
+  --ring: oklch(0.76 0.15 285);
+  --chart-1: oklch(0.76 0.15 285);
+  --chart-2: oklch(0.62 0.16 150);
+  --chart-3: oklch(0.75 0.16 75);
+  --chart-4: oklch(0.6 0.22 25);
+  --chart-5: oklch(0.55 0.18 320);
+  --sidebar: oklch(0.19 0.04 265);
+  --sidebar-foreground: oklch(0.96 0.005 285);
+  --sidebar-primary: oklch(0.76 0.15 285);
+  --sidebar-primary-foreground: oklch(0.22 0.04 265);
+  --sidebar-accent: oklch(0.25 0.04 265);
+  --sidebar-accent-foreground: oklch(0.96 0.005 285);
+  --sidebar-border: oklch(1 0 0 / 0.1);
+  --sidebar-ring: oklch(0.76 0.15 285);
 }
 
 @layer base {
@@ -164,5 +166,67 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    letter-spacing: -0.015em;
+  }
+
+  /* Instrument Serif for display headings */
+  .font-display {
+    font-family: 'Instrument Serif', Georgia, serif;
+    letter-spacing: -0.01em;
+  }
+}
+
+/* ── Tab scroll fade indicator ─────────────────────────────── */
+.tab-scroll-container {
+  position: relative;
+}
+
+.tab-scroll-container::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 48px;
+  background: linear-gradient(to right, transparent, var(--color-background));
+  pointer-events: none;
+  z-index: 2;
+  transition: opacity 0.2s;
+}
+
+/* Hide fade when scrolled to end */
+.tab-scroll-container.scrolled-end::after {
+  opacity: 0;
+}
+
+/* Subtle left fade when not at start */
+.tab-scroll-container.scrolled-start::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+  background: linear-gradient(to left, transparent, var(--color-background));
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Tab pill scroll hint animation on first load */
+@keyframes tab-hint-scroll {
+  0%   { transform: translateX(0); }
+  30%  { transform: translateX(-8px); }
+  60%  { transform: translateX(4px); }
+  100% { transform: translateX(0); }
+}
+
+.tab-hint-animate {
+  animation: tab-hint-scroll 0.6s ease-out 1s both;
 }

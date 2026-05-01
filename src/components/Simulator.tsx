@@ -755,16 +755,33 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
         if (!expertMode && (v === "veto" || v === "protect")) return;
         setActiveTab(v);
       }} className="w-full">
-        <div className="overflow-x-auto -mx-1 px-1 pb-1">
-          <TabsList className="flex w-max min-w-full h-auto gap-1 p-1">
-            <TabsTrigger value="setup" className="flex-shrink-0 text-xs px-3 py-2">👥 Setup</TabsTrigger>
-            <TabsTrigger value="rounds" className="flex-shrink-0 text-xs px-3 py-2">⚙️ Rounds</TabsTrigger>
-            <TabsTrigger value="captable" className="flex-shrink-0 text-xs px-3 py-2">📋 Cap Table & Board</TabsTrigger>
-            <TabsTrigger value="veto" className={cn("flex-shrink-0 text-xs px-3 py-2", !expertMode && "opacity-30 pointer-events-none")}>🛡️ Veto</TabsTrigger>
-            <TabsTrigger value="protect" className={cn("flex-shrink-0 text-xs px-3 py-2", !expertMode && "opacity-30 pointer-events-none")}>🔒 Protect</TabsTrigger>
-            <TabsTrigger value="exit" className="flex-shrink-0 text-xs px-3 py-2">💰 Exit</TabsTrigger>
-            <TabsTrigger value="compare" className="flex-shrink-0 text-xs px-3 py-2">📊 Compare</TabsTrigger>
-          </TabsList>
+        {/* Tab scroll container with fade indicators */}
+        <div
+          className="tab-scroll-container"
+          ref={(el) => {
+            if (!el) return;
+            const inner = el.querySelector(".tab-inner-scroll") as HTMLElement | null;
+            if (!inner) return;
+            const update = () => {
+              el.classList.toggle("scrolled-start", inner.scrollLeft > 8);
+              el.classList.toggle("scrolled-end", inner.scrollLeft + inner.clientWidth >= inner.scrollWidth - 8);
+            };
+            inner.addEventListener("scroll", update, { passive: true });
+            update();
+          }}
+        >
+          <div className="tab-inner-scroll overflow-x-auto -mx-1 px-1 pb-1 scrollbar-none" style={{ scrollbarWidth: "none" }}>
+            <TabsList className="tab-hint-animate flex w-max min-w-full h-auto gap-1 p-1">
+              <TabsTrigger value="setup" className="flex-shrink-0 text-xs px-3 py-2">👥 Setup</TabsTrigger>
+              <TabsTrigger value="rounds" className="flex-shrink-0 text-xs px-3 py-2">⚙️ Rounds</TabsTrigger>
+              <TabsTrigger value="captable" className="flex-shrink-0 text-xs px-3 py-2">📋 Cap Table</TabsTrigger>
+              <TabsTrigger value="exit" className="flex-shrink-0 text-xs px-3 py-2">💰 Exit</TabsTrigger>
+              <TabsTrigger value="compare" className="flex-shrink-0 text-xs px-3 py-2">📊 Compare</TabsTrigger>
+              <TabsTrigger value="veto" className={cn("flex-shrink-0 text-xs px-3 py-2", !expertMode && "opacity-30 pointer-events-none")}>🛡️ Veto</TabsTrigger>
+              <TabsTrigger value="protect" className={cn("flex-shrink-0 text-xs px-3 py-2", !expertMode && "opacity-30 pointer-events-none")}>🔒 Protect</TabsTrigger>
+              <TabsTrigger value="playbook" className="flex-shrink-0 text-xs px-3 py-2">📖 Playbook</TabsTrigger>
+            </TabsList>
+          </div>
         </div>
 
         {/* ── SETUP ── */}
