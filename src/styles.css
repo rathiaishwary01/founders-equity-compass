@@ -288,3 +288,134 @@ input:focus, select:focus, textarea:focus {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: oklch(0.22 0.04 265 / 0.15); border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: oklch(0.22 0.04 265 / 0.3); }
+
+/* ══════════════════════════════════════════════════════════════
+   SIMULATOR CONTENT — font scaling + visual depth
+   ══════════════════════════════════════════════════════════════ */
+
+/* Bump up all text inside the simulator */
+.simulator-content {
+  font-size: 0.9375rem; /* 15px base */
+  line-height: 1.6;
+}
+
+.simulator-content .text-\[10px\]  { font-size: 0.75rem !important; }
+.simulator-content .text-\[11px\]  { font-size: 0.8125rem !important; }
+.simulator-content .text-xs        { font-size: 0.8125rem !important; }
+.simulator-content .text-sm        { font-size: 0.9375rem !important; }
+.simulator-content .text-base      { font-size: 1.0625rem !important; }
+
+/* Cards — white with subtle lift */
+.simulator-content > .space-y-4 > *,
+.simulator-content .card,
+.simulator-content [class*="rounded"][class*="border"]:not([role]) {
+  box-shadow: 0 1px 3px oklch(0.22 0.04 265 / 0.06), 0 2px 8px oklch(0.22 0.04 265 / 0.04);
+  transition: box-shadow 0.15s ease;
+}
+
+/* Section header cards — navy tint */
+.simulator-content .section-header {
+  background: linear-gradient(135deg, oklch(0.22 0.04 265), oklch(0.3 0.07 270));
+  color: white;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+}
+
+/* Stat / summary pill cards — lavender tint */
+.simulator-content .grid.grid-cols-2 > *,
+.simulator-content .grid.grid-cols-4 > * {
+  background: linear-gradient(135deg, oklch(0.975 0.008 285), white) !important;
+  border-color: oklch(0.76 0.15 285 / 0.2) !important;
+}
+
+/* Card inner headings */
+.simulator-content .font-bold.text-sm,
+.simulator-content .font-semibold.text-sm {
+  font-size: 0.9375rem !important;
+  letter-spacing: -0.01em;
+  color: oklch(0.22 0.04 265);
+}
+
+/* Card sub-labels / muted text */
+.simulator-content .text-muted-foreground {
+  color: oklch(0.48 0.03 265) !important;
+}
+
+/* Round card headers — colored strip */
+.round-card-header {
+  background: linear-gradient(90deg, oklch(0.22 0.04 265 / 0.06), transparent);
+  border-bottom: 1px solid oklch(0.22 0.04 265 / 0.08);
+  border-radius: 0.5rem 0.5rem 0 0;
+  padding: 0.625rem 1rem;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: oklch(0.22 0.04 265);
+}
+
+/* Signal / alert rows — coloured left accent */
+.simulator-content [class*="bg-red"],
+.simulator-content [class*="bg-amber"],
+.simulator-content [class*="bg-emerald"],
+.simulator-content [class*="bg-blue"] {
+  border-radius: 0.625rem;
+  padding: 0.625rem 0.875rem;
+}
+
+/* Alternate tab content areas background */
+.simulator-content [role="tabpanel"] {
+  padding-top: 0.25rem;
+}
+
+/* Input fields — more readable */
+.simulator-content input,
+.simulator-content select {
+  font-size: 0.9375rem !important;
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+
+/* Large stat numbers */
+.simulator-content .text-2xl,
+.simulator-content .text-3xl,
+.simulator-content .text-4xl {
+  font-weight: 800 !important;
+  letter-spacing: -0.03em !important;
+  color: oklch(0.22 0.04 265) !important;
+}
+
+/* Accordion triggers — slightly larger */
+.simulator-content [data-slot="accordion-trigger"] {
+  font-size: 0.9375rem !important;
+  font-weight: 600 !important;
+}
+
+/* Badge pills */
+.simulator-content [class*="rounded-full"] {
+  font-size: 0.75rem !important;
+}
+
+/* Table text */
+.simulator-content th { 
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em !important;
+  color: oklch(0.48 0.03 265) !important;
+}
+.simulator-content td { 
+  font-size: 0.875rem !important;
+}
+
+/* Playbook / recommendation cards */
+.simulator-content .space-y-3 > div[class*="rounded"] {
+  border-left-width: 3px;
+  padding: 0.875rem 1rem;
+}
+
+/* Buttons inside simulator */
+.simulator-content button:not([role="tab"]):not([data-state]) {
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+}

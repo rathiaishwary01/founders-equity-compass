@@ -711,7 +711,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
   const lineMax = Math.ceil(lineMaxRaw / 10) * 10;
 
   return (
-    <div className="space-y-4 pb-6">
+    <div className="simulator-content space-y-4 pb-6">
       {/* Summary Pills */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="p-3">
@@ -1008,11 +1008,19 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
           {/* India Entity Structure Card */}
           {!isUS && (
             <Card className="p-4 border-l-4" style={{ borderLeftColor: "oklch(0.76 0.15 285)" }}>
-              <div className="font-bold text-sm mb-1">🏗️ India → US Flip Structure</div>
-              <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
-                Indian residents cannot directly own a US entity (Delaware C-Corp) under RBI / FEMA regulations.
-                The required structure before raising from US VCs:
-              </p>
+              <Accordion type="single" collapsible>
+                <AccordionItem value="flip" className="border-0">
+                  <AccordionTrigger className="py-0 hover:no-underline">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm">🏗️ India → US Flip Structure</span>
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: "oklch(0.76 0.15 285 / 0.2)", color: "oklch(0.22 0.04 265)" }}>Required before US VC</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pt-3">
+                  <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+                    Indian residents cannot directly own a US entity (Delaware C-Corp) under RBI / FEMA regulations.
+                    The required structure before raising from US VCs:
+                  </p>
               <div className="space-y-2 mb-3">
                 {[
                   {
@@ -1057,6 +1065,9 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
               <div className="mt-2.5 rounded-md border border-blue-200 bg-blue-50/50 px-3 py-2 text-[10px] leading-relaxed">
                 <span className="font-semibold">Transfer pricing:</span> All transactions between the India Pvt Ltd and the Delaware parent (software licences, management fees, shared services) must be at arm's length under Section 92 of the Income Tax Act. Document these with a Transfer Pricing study. Undocumented intra-group charges are the #1 India tax audit trigger for VC-backed startups.
               </div>
+              </AccordionContent>
+              </AccordionItem>
+              </Accordion>
             </Card>
           )}
 
