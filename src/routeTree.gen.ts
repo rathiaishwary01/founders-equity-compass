@@ -9,16 +9,28 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SimulatorRouteImport } from './routes/simulator'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ScenariosIndexRouteImport } from './routes/scenarios.index'
 import { Route as ShareSlugRouteImport } from './routes/share.$slug'
 import { Route as ScenariosIdRouteImport } from './routes/scenarios.$id'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SimulatorRoute = SimulatorRouteImport.update({
   id: '/simulator',
   path: '/simulator',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -50,7 +62,9 @@ const ScenariosIdRoute = ScenariosIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/privacy': typeof PrivacyRoute
   '/simulator': typeof SimulatorRoute
+  '/terms': typeof TermsRoute
   '/scenarios/$id': typeof ScenariosIdRoute
   '/share/$slug': typeof ShareSlugRoute
   '/scenarios/': typeof ScenariosIndexRoute
@@ -58,7 +72,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/privacy': typeof PrivacyRoute
   '/simulator': typeof SimulatorRoute
+  '/terms': typeof TermsRoute
   '/scenarios/$id': typeof ScenariosIdRoute
   '/share/$slug': typeof ShareSlugRoute
   '/scenarios': typeof ScenariosIndexRoute
@@ -67,7 +83,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/privacy': typeof PrivacyRoute
   '/simulator': typeof SimulatorRoute
+  '/terms': typeof TermsRoute
   '/scenarios/$id': typeof ScenariosIdRoute
   '/share/$slug': typeof ShareSlugRoute
   '/scenarios/': typeof ScenariosIndexRoute
@@ -77,7 +95,9 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/privacy'
     | '/simulator'
+    | '/terms'
     | '/scenarios/$id'
     | '/share/$slug'
     | '/scenarios/'
@@ -85,7 +105,9 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/privacy'
     | '/simulator'
+    | '/terms'
     | '/scenarios/$id'
     | '/share/$slug'
     | '/scenarios'
@@ -93,7 +115,9 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/auth'
+    | '/privacy'
     | '/simulator'
+    | '/terms'
     | '/scenarios/$id'
     | '/share/$slug'
     | '/scenarios/'
@@ -102,7 +126,9 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  PrivacyRoute: typeof PrivacyRoute
   SimulatorRoute: typeof SimulatorRoute
+  TermsRoute: typeof TermsRoute
   ScenariosIdRoute: typeof ScenariosIdRoute
   ShareSlugRoute: typeof ShareSlugRoute
   ScenariosIndexRoute: typeof ScenariosIndexRoute
@@ -110,11 +136,25 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/simulator': {
       id: '/simulator'
       path: '/simulator'
       fullPath: '/simulator'
       preLoaderRoute: typeof SimulatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -158,7 +198,9 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  PrivacyRoute: PrivacyRoute,
   SimulatorRoute: SimulatorRoute,
+  TermsRoute: TermsRoute,
   ScenariosIdRoute: ScenariosIdRoute,
   ShareSlugRoute: ShareSlugRoute,
   ScenariosIndexRoute: ScenariosIndexRoute,

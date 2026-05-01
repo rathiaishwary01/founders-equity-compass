@@ -519,32 +519,11 @@ input:focus, select:focus, textarea:focus {
   border-bottom: none !important;
 }
 
-/* ── Hero pill: isolated from all other !important color rules ─────────────── */
-.hero-pill-label,
-.hero-pill-number {
-  color: white !important;
-}
-.hero-pill-label {
-  font-size: 0.6875rem !important;
-  font-weight: 600 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.06em !important;
-  opacity: 0.55;
-}
-.hero-pill-number {
-  font-size: 3rem !important;   /* text-5xl equivalent */
-  font-weight: 800 !important;
-  line-height: 1 !important;
-  letter-spacing: -0.03em !important;
-  margin-top: 0.25rem !important;
-}
-.hero-pill-status {
-  font-size: 0.75rem !important;
-  font-weight: 500 !important;
-  margin-top: 0.375rem !important;
-  /* color set via inline style — overridden by parent .hero-pill * rule above */
-  /* Use !important on the inline-set color by re-applying via JS style prop */
-}
+
+
+
+
+
 
 /* ── Secondary stat pills ────────────────────────────────────────────────── */
 .stat-pill {
@@ -574,4 +553,37 @@ input:focus, select:focus, textarea:focus {
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
+}
+
+/* Hero pill background — force dark navy regardless of Card class */
+
+
+
+
+
+
+/* ── Hero pill ───────────────────────────────────────────────────────────── */
+.hero-pill {
+  min-height: 90px;
+  border-left: 4px solid oklch(0.22 0.04 265) !important;
+}
+.hero-pill-label {
+  font-size: 0.6875rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  color: oklch(0.55 0.03 265) !important;
+}
+.hero-pill-number {
+  font-size: 3rem !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  letter-spacing: -0.03em !important;
+  margin-top: 0.25rem !important;
+  color: oklch(0.12 0.04 265) !important;
+}
+.hero-pill-status {
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  margin-top: 0.375rem !important;
 }

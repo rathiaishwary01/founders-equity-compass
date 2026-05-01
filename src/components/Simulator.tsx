@@ -8,7 +8,6 @@ import {
   Line,
   LineChart,
   Pie,
-  PieChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip as RechartsTooltip,
@@ -729,13 +728,13 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
     <div className="simulator-content space-y-4 pb-6 md:pb-6">
       {/* Summary Pills */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="hero-pill p-4 md:col-span-2 lg:col-span-1" style={{ background: "oklch(0.22 0.04 265)" }}>
+        <div className="hero-pill rounded-xl p-4">
           <div className="hero-pill-label">Founders Combined</div>
           <div className="hero-pill-number">{founderPct.toFixed(1)}%</div>
           <div className="hero-pill-status" style={{ color: founderPct > 51 ? "oklch(0.76 0.18 150)" : founderPct > 35 ? "oklch(0.85 0.18 75)" : "oklch(0.75 0.2 25)" }}>
             {founderPct > 51 ? "Majority — you have control" : founderPct > 35 ? "Caution — watch dilution" : "Minority position"}
           </div>
-        </Card>
+        </div>
         <Card className="stat-pill p-4 flex flex-col items-center justify-center text-center">
           <div className="stat-pill-label">Post-money Val.</div>
           <div className="stat-pill-number">{fmtVal(latest.valuation)}</div>
@@ -1533,21 +1532,16 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             {!!riskSignals.length && (
               <div className="mt-3 space-y-2">
                 {riskSignals.map((s, i) => {
-                  const dotCls =
-                    s.tone === "red"
-                      ? "bg-red-500"
-                      : s.tone === "orange"
-                        ? "bg-orange-500"
-                        : s.tone === "yellow"
-                          ? "bg-yellow-400"
-                          : s.tone === "amber"
-                            ? "bg-amber-400"
-                            : s.tone === "blue"
-                              ? "bg-blue-400"
-                              : "bg-emerald-400";
+                  const dotColor =
+                    s.tone === "red"    ? "#ef4444"
+                    : s.tone === "orange" ? "#f97316"
+                    : s.tone === "yellow" ? "#facc15"
+                    : s.tone === "amber"  ? "#f59e0b"
+                    : s.tone === "blue"   ? "#60a5fa"
+                    : "#34d399";
                   return (
                     <div key={i} className="flex items-start gap-2 text-xs text-white/90">
-                      <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", dotCls)} />
+                      <span style={{ display: "block", width: "8px", height: "8px", minWidth: "8px", maxWidth: "8px", minHeight: "8px", maxHeight: "8px", borderRadius: "50%", backgroundColor: dotColor, flexShrink: 0, marginTop: "4px" }} />
                       <span>{s.text}</span>
                     </div>
                   );
@@ -1981,37 +1975,28 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                 </button>
               ))}
             </div>
-            <div className="h-64">
-              <ResponsiveContainer>
-                <PieChart>
-                  <Pie data={activeCap.holders} dataKey="pct" nameKey="name" cx="50%" cy="50%" outerRadius={80} innerRadius={45}>
-                    {activeCap.holders.map((h, i) => (
-                      <Cell key={i} fill={HOLDER_COLORS[h.name] || "#888"} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip formatter={(v: number) => v.toFixed(2) + "%"} />
-                  <Legend wrapperStyle={{ fontSize: "10px" }} />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="mt-1 space-y-2">
+              {[...activeCap.holders].sort((a, b) => b.pct - a.pct).map((h, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  {/* Name + role */}
+                  <div className="w-28 shrink-0">
+                    <div className="text-xs font-semibold text-foreground truncate">{h.name}</div>
+                    <div className="text-xs text-muted-foreground truncate">{h.role}</div>
+                  </div>
+                  {/* Bar */}
+                  <div className="flex-1 relative h-5 bg-muted/40 rounded-full overflow-hidden">
+                    <div
+                      className="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
+                      style={{ width: `${Math.max(h.pct, 0.5)}%`, background: HOLDER_COLORS[h.name] || "#888" }}
+                    />
+                  </div>
+                  {/* Percentage */}
+                  <div className="w-14 text-right text-xs font-bold shrink-0" style={{ color: HOLDER_COLORS[h.name] || "#888" }}>
+                    {h.pct.toFixed(1)}%
+                  </div>
+                </div>
+              ))}
             </div>
-            <table className="w-full text-sm mt-3">
-              <thead>
-                <tr className="text-xs uppercase text-muted-foreground border-b">
-                  <th className="text-left py-2">Stakeholder</th>
-                  <th className="text-right py-2">%</th>
-                  <th className="text-right py-2">Type</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...activeCap.holders].sort((a, b) => b.pct - a.pct).map((h, i) => (
-                  <tr key={i} className="border-b last:border-0">
-                    <td className="py-2"><strong>{h.name}</strong><div className="text-xs text-muted-foreground">{h.role}</div></td>
-                    <td className="text-right font-bold py-2" style={{ color: HOLDER_COLORS[h.name] }}>{h.pct.toFixed(2)}%</td>
-                    <td className="text-right py-2"><Badge variant="secondary">{h.type}</Badge></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </Card>
 
           <Card className="p-4">
@@ -2114,7 +2099,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                         )}>
                           {regime}
                         </div>
-                        <div className="text-xs text-muted-foreground text-center leading-tight w-14">{snap.label}</div>
+                        <div className="text-xs text-muted-foreground text-center leading-tight whitespace-nowrap">{snap.label === "Pre-Funding" ? "Day 0" : snap.label}</div>
                         <div className={cn(
                           "text-xs font-semibold",
                           regime === "2" ? "text-emerald-600" : regime === "1" ? "text-amber-600" : "text-red-600",

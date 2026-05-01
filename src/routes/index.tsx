@@ -210,9 +210,11 @@ function Landing() {
               For negotiation planning only — not legal advice. MIT licence.
             </p>
           </div>
-          <nav className="flex gap-6 text-sm" style={{ color: "oklch(0.52 0.03 265)" }}>
+          <nav className="flex flex-wrap gap-6 text-sm" style={{ color: "oklch(0.52 0.03 265)" }}>
             <Link to="/" className="hover:text-foreground transition-colors">Home</Link>
             <Link to="/simulator" className="hover:text-foreground transition-colors">Simulator</Link>
+            <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+            <Link to="/terms" className="hover:text-foreground transition-colors">Terms of Use</Link>
             <a href="https://github.com/EquiCompass/founders-equity-compass" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors flex items-center gap-1">
               <Github className="h-3.5 w-3.5" /> GitHub
             </a>
