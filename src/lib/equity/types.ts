@@ -61,6 +61,17 @@ export interface SafeConfig {
 
 export type Market = "india" | "us";
 
+/**
+ * Describes the founder's location and entity structure choice.
+ * This drives which compliance guidance, signals, and recommendations are shown.
+ *
+ * - "india-only"    Indian founders, India Pvt Ltd entity, raising from Indian VCs only
+ * - "india-flip"    Indian founders staying in India, creating Delaware C-Corp via LLP route
+ * - "india-us-move" Indian founders permanently relocating to US, direct Delaware ownership
+ * - "us"            US-based founders, standard Delaware playbook
+ */
+export type FounderStructure = "india-only" | "india-flip" | "india-us-move" | "us";
+
 export interface VestingConfig {
   /** Months before any equity vests (default 12) */
   cliffMonths: number;
@@ -79,6 +90,7 @@ export const DEFAULT_VESTING: VestingConfig = {
 export interface SimulatorState {
   founderSeats: number;
   market: Market;
+  founderStructure: FounderStructure;
   safe: SafeConfig;
   rounds: Record<RoundKey, RoundConfig>;
   exitValue: number;
@@ -183,6 +195,7 @@ export const US_DEFAULT_ROUNDS: SimulatorState["rounds"] = {
 export const DEFAULT_STATE: SimulatorState = {
   founderSeats: 2,
   market: "india",
+  founderStructure: "india-flip",
   safe: { enabled: false, amount: 0.25, cap: 3, discount: 20, mfn: false },
   rounds: INDIA_DEFAULT_ROUNDS,
   exitValue: 100,

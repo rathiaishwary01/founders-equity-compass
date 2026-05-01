@@ -254,10 +254,16 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
   const hasParticipatingPreferred = enabledRounds.some((k) => state.rounds[k].prefType === "part");
   const participatingRoundNames = enabledRounds.filter((k) => state.rounds[k].prefType === "part").map((k) => ROUND_LABELS[k]).join(", ");
 
-  const isUS = state.market === "us";
+  // founderStructure drives market + compliance guidance
+  // Normalise: old saves without founderStructure default to matching market field
+  const founderStructure = state.founderStructure ?? (state.market === "us" ? "us" : "india-flip");
+  const isUS = founderStructure === "us" || founderStructure === "india-us-move";
+  const isIndiaResident = founderStructure === "india-only" || founderStructure === "india-flip";
+  const isFlip = founderStructure === "india-flip";
+  const isMoveToUS = founderStructure === "india-us-move";
 
   const riskSignals = useMemo(() => {
-    const signals: Array<{ tone: "red" | "orange" | "yellow" | "green"; text: string }> = [];
+    const signals: Array<{ tone: "red" | "orange" | "yellow" | "green" | "amber" | "blue"; text: string }> = [];
 
     // Signal 1 — Board control
     if (latest.vcSeats >= founderSeats) {
@@ -369,10 +375,17 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
     }
 
     // India: flip structure warning
-    if (!isUS && anyRoundsEnabled) {
+    if (isFlip && anyRoundsEnabled) {
       signals.push({
         tone: "amber",
         text: "US flip structure required before US VC closes: Indian residents cannot directly own a Delaware C-Corp under RBI / FEMA rules. You need: LLP → Delaware C-Corp → India Pvt Ltd. Start 3–4 months before signing. See the Flip Structure card in the Setup tab.",
+      });
+    }
+    // Move to US: residency change signals
+    if (isMoveToUS && anyRoundsEnabled) {
+      signals.push({
+        tone: "blue",
+        text: "Moving to US: update FEMA residential status with your AD bank, file Indian exit-year return (exit tax under Section 9 may apply on unrealised gains), and obtain OCI card. DTAA (India-US tax treaty) prevents double taxation on salary and future equity gains.",
       });
     }
 
@@ -441,6 +454,9 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
     state.vestingEnabled,
     state.vesting,
     founders,
+    isFlip,
+    isMoveToUS,
+    isIndiaResident,
   ]);
 
   const recommendations = useMemo(() => {
@@ -606,14 +622,13 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
           nextStep: "After this round closes, order a 409A from Carta, Capshare, or a Big 4 team ($5–15K). Put a recurring calendar reminder: refresh 409A annually and within 90 days of any material financing event. ISOs go to US employees; use NSOs for international hires.",
         });
       }
-    } else {
+    } else if (isIndiaResident) {
       // ── India-specific ───────────────────────────────────────────────────
-      // Flip structure — highest priority for India founders raising from US VCs
-      if (anyRoundsEnabled) {
+      // Flip structure — only for india-flip path
+      if (isFlip && anyRoundsEnabled) {
         recs.push({
-          id: "india-flip",
           priority: "critical",
-          timing: "do-now",
+          timing: "now",
           action: "Initiate India → US entity flip structure before approaching US VCs",
           why: "Indian residents cannot directly own a Delaware C-Corp under FEMA / RBI regulations. US VCs will require a Delaware C-Corp before closing. Structure: LLP (India founders) → Delaware C-Corp → India Pvt Ltd subsidiary. Missing this means 3–6 month delays after a term sheet, which kills most deals.",
           nextStep: "Engage a CA/law firm experienced in FEMA/ODI filings. Steps in order: (1) Form LLP — ₹15K, 10 days; (2) LLP incorporates Delaware C-Corp — $600, 5 days; (3) file Form ODI with RBI via AD bank within 30 days; (4) Delaware C-Corp incorporates India Pvt Ltd subsidiary — ₹50K, 20 days; (5) founders swap LLP interest for Delaware shares at SEBI-registered FMV. Total cost: ₹3–8L, total timeline: 3–4 months. Do not sign a US term sheet before the Delaware entity exists.",
@@ -663,7 +678,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
     }
 
     return recs;
-  }, [isUS, latest, founderSeats, founderPct, founderOnlyHolders, anyRoundsEnabled, state.rounds, state.exitValue, state.usePref, enabledRounds, hasParticipatingPreferred, state.safe.enabled, hasRedemption, redemptionItems, totalRedemptionLiability]);
+  }, [isUS, isFlip, isMoveToUS, isIndiaResident, latest, founderSeats, founderPct, founderOnlyHolders, anyRoundsEnabled, state.rounds, state.exitValue, state.usePref, enabledRounds, hasParticipatingPreferred, state.safe.enabled, hasRedemption, redemptionItems, totalRedemptionLiability]);
 
   // Full-ratchet counterfactual — only runs when at least one enabled round has full-ratchet
   const hasFullRatchet = ROUND_KEYS.some((k) => state.rounds[k]?.enabled && state.rounds[k]?.antiDilution === "full-ratchet");
@@ -711,7 +726,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
   const lineMax = Math.ceil(lineMaxRaw / 10) * 10;
 
   return (
-    <div className="simulator-content space-y-4 pb-6">
+    <div className="simulator-content space-y-4 pb-6 md:pb-6">
       {/* Summary Pills */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="p-3">
@@ -777,7 +792,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
       }} className="w-full">
         {/* Tab scroll container with fade indicators */}
         <div
-          className="tab-scroll-container"
+          className="tab-scroll-container hidden md:block"
           ref={(el) => {
             if (!el) return;
             const inner = el.querySelector(".tab-inner-scroll") as HTMLElement | null;
@@ -806,54 +821,100 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
         {/* ── SETUP ── */}
         <TabsContent value="setup" className="space-y-3 mt-4">
 
-          {/* Market toggle */}
-          <div className="flex items-center gap-1 rounded-xl bg-muted p-1">
-            <button
-              disabled={readOnly}
-              onClick={() => {
-                if (readOnly || state.market === "india") return;
-                const noRoundsActive = ROUND_KEYS.every((k) => !state.rounds[k].enabled);
-                onChange({
-                  ...state,
-                  market: "india",
-                  rounds: noRoundsActive ? INDIA_DEFAULT_ROUNDS : state.rounds,
-                });
-              }}
-              className={cn(
-                "flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-all",
-                state.market !== "us"
-                  ? "bg-white shadow text-foreground dark:bg-background"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              🇮🇳 India
-            </button>
-            <button
-              disabled={readOnly}
-              onClick={() => {
-                if (readOnly || state.market === "us") return;
-                const noRoundsActive = ROUND_KEYS.every((k) => !state.rounds[k].enabled);
-                onChange({
-                  ...state,
-                  market: "us",
-                  rounds: noRoundsActive ? US_DEFAULT_ROUNDS : state.rounds,
-                });
-              }}
-              className={cn(
-                "flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-all",
-                state.market === "us"
-                  ? "bg-white shadow text-foreground dark:bg-background"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              🇺🇸 United States
-            </button>
+          {/* Founder Structure Selector */}
+          <div className="space-y-2">
+            <div className="text-sm font-semibold" style={{ color: "oklch(0.22 0.04 265)" }}>Where are you based and what entity are you building?</div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+              {([
+                {
+                  value: "india-only" as const,
+                  flag: "🇮🇳",
+                  title: "India entity only",
+                  subtitle: "Pvt Ltd in India · raising from Indian VCs (SEBI-registered AIFs)",
+                  market: "india" as const,
+                  rounds: INDIA_DEFAULT_ROUNDS,
+                },
+                {
+                  value: "india-flip" as const,
+                  flag: "🇮🇳 → 🇺🇸",
+                  title: "Staying in India · US entity via LLP",
+                  subtitle: "LLP → Delaware C-Corp → India subsidiary · targeting US VCs",
+                  market: "us" as const,
+                  rounds: US_DEFAULT_ROUNDS,
+                },
+                {
+                  value: "india-us-move" as const,
+                  flag: "✈️ 🇺🇸",
+                  title: "Moving to the US permanently",
+                  subtitle: "Direct Delaware ownership · no LLP needed · OCI / visa path",
+                  market: "us" as const,
+                  rounds: US_DEFAULT_ROUNDS,
+                },
+                {
+                  value: "us" as const,
+                  flag: "🇺🇸",
+                  title: "US-based founder",
+                  subtitle: "Standard Delaware C-Corp · NVCA docs · 409A · QSBS",
+                  market: "us" as const,
+                  rounds: US_DEFAULT_ROUNDS,
+                },
+              ] as const).map((opt) => {
+                const isSelected = founderStructure === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    disabled={readOnly}
+                    onClick={() => {
+                      if (readOnly || founderStructure === opt.value) return;
+                      const noRoundsActive = ROUND_KEYS.every((k) => !state.rounds[k].enabled);
+                      onChange({
+                        ...state,
+                        founderStructure: opt.value,
+                        market: opt.market,
+                        rounds: noRoundsActive ? opt.rounds : state.rounds,
+                      });
+                    }}
+                    className={cn(
+                      "relative w-full rounded-xl border-2 px-3 py-3 text-center transition-all",
+                      isSelected
+                        ? "border-primary bg-primary/8 shadow-sm"
+                        : "border-border bg-white hover:border-primary/40 hover:bg-muted/20",
+                    )}
+                  >
+                    {isSelected && (
+                      <div className="absolute top-2 right-2 h-4 w-4 rounded-full bg-primary flex items-center justify-center">
+                        <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                      </div>
+                    )}
+                    <div className="text-2xl mb-1.5">{opt.flag}</div>
+                    <div className={cn("text-xs font-semibold leading-tight", isSelected ? "text-primary" : "text-foreground")}>{opt.title}</div>
+                    <div className="text-[10px] text-muted-foreground mt-1 leading-snug line-clamp-2">{opt.subtitle}</div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* US context banner */}
-          {isUS && (
-            <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
-              <span className="font-bold">US mode</span> — Round sizes default to US norms ($M). Insights reflect Delaware C-Corp structure, YC SAFE terms, 409A requirements, and NVCA protective provisions.
+          {/* Context banner */}
+          {founderStructure === "india-only" && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3 text-xs text-amber-900">
+              <span className="font-bold">India entity mode</span> — Guidance reflects Companies Act 2013, SEBI AIF norms, CCPS structures, angel tax (Section 56(2)(viib)), and MCA filing requirements. Round sizes in ₹Cr equivalent.
+            </div>
+          )}
+          {founderStructure === "india-flip" && (
+            <div className="rounded-xl border px-4 py-3 text-xs" style={{ borderColor: "oklch(0.76 0.15 285 / 0.4)", background: "oklch(0.975 0.008 285)" }}>
+              <span className="font-bold" style={{ color: "oklch(0.22 0.04 265)" }}>India resident · Delaware entity mode</span>
+              <span className="ml-1" style={{ color: "oklch(0.4 0.03 265)" }}>— Rounds follow US VC norms. Compliance guidance covers FEMA, ODI filings, and transfer pricing between your India subsidiary and Delaware parent. See the Flip Structure card below.</span>
+            </div>
+          )}
+          {founderStructure === "india-us-move" && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50/60 px-4 py-3 text-xs text-blue-900">
+              <span className="font-bold">Moving to US mode</span> — You can own Delaware shares directly (no LLP needed) once you are a non-resident under FEMA. Key steps: obtain OCI card or valid US visa, update your FEMA residential status, and file your Indian exit-year tax return with a CA. DTAA (India-US) eliminates double taxation on salary and capital gains.
+            </div>
+          )}
+          {founderStructure === "us" && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800">
+              <span className="font-bold">US mode</span> — Round sizes default to US norms. Insights reflect Delaware C-Corp structure, YC SAFE terms, 409A requirements, and NVCA protective provisions.
             </div>
           )}
 
@@ -1005,8 +1066,8 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             })()}
           </Card>
 
-          {/* India Entity Structure Card */}
-          {!isUS && (
+          {/* India Entity Structure Card — only for india-flip */}
+          {isFlip && (
             <Card className="p-4 border-l-4" style={{ borderLeftColor: "oklch(0.76 0.15 285)" }}>
               <Accordion type="single" collapsible>
                 <AccordionItem value="flip" className="border-0">
@@ -1456,7 +1517,11 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                         ? "bg-orange-500"
                         : s.tone === "yellow"
                           ? "bg-yellow-400"
-                          : "bg-emerald-400";
+                          : s.tone === "amber"
+                            ? "bg-amber-400"
+                            : s.tone === "blue"
+                              ? "bg-blue-400"
+                              : "bg-emerald-400";
                   return (
                     <div key={i} className="flex items-start gap-2 text-xs text-white/90">
                       <span className={cn("mt-1 h-2.5 w-2.5 rounded-full", dotCls)} />
@@ -3385,6 +3450,39 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
 
         </TabsContent>
       </Tabs>
+
+      {/* ── Mobile bottom tab bar (md:hidden) ────────────────────────────── */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden border-t"
+        style={{ background: "oklch(0.22 0.04 265)", borderColor: "oklch(0.76 0.15 285 / 0.25)" }}>
+        <div className="flex overflow-x-auto scrollbar-none">
+          {([
+            { value: "setup",    emoji: "👥", label: "Setup" },
+            { value: "rounds",   emoji: "⚙️",  label: "Rounds" },
+            { value: "captable", emoji: "📋", label: "Cap Table" },
+            { value: "exit",     emoji: "💰", label: "Exit" },
+            { value: "veto",     emoji: "🛡️",  label: "Veto",    expert: true },
+            { value: "protect",  emoji: "🔒", label: "Protect", expert: true },
+            { value: "compare",  emoji: "📊", label: "Compare" },
+          ] as const).filter((t): t is typeof t => !('expert' in t && (t as {expert?: boolean}).expert && !expertMode)).map((tab) => {
+            const isActive = activeTab === tab.value;
+            return (
+              <button
+                key={tab.value}
+                onClick={() => setActiveTab(tab.value)}
+                className="flex-1 min-w-[60px] flex flex-col items-center justify-center gap-0.5 py-2.5 px-1 transition-all"
+                style={{
+                  color: isActive ? "oklch(0.76 0.15 285)" : "rgba(255,255,255,0.45)",
+                  borderTop: isActive ? "2px solid oklch(0.76 0.15 285)" : "2px solid transparent",
+                }}
+              >
+                <span className="text-lg leading-none">{tab.emoji}</span>
+                <span className="text-[9px] font-medium tracking-tight whitespace-nowrap">{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
       {/* ── Export Modal ─────────────────────────────────────────────── */}
       {showExport && (
         <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setShowExport(false)}>

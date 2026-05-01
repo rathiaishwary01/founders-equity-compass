@@ -419,3 +419,48 @@ input:focus, select:focus, textarea:focus {
   font-size: 0.875rem !important;
   font-weight: 600 !important;
 }
+
+/* ── Mobile-specific styles ──────────────────────────────────────────────── */
+
+/* Push all simulator content above the fixed bottom nav on mobile */
+@media (max-width: 767px) {
+  .simulator-content {
+    padding-bottom: 5rem !important; /* 80px — clears the bottom nav */
+  }
+
+  /* Bigger touch targets on mobile */
+  .simulator-content input[type="range"] {
+    height: 2.5rem !important;
+  }
+  .simulator-content input[type="number"],
+  .simulator-content input[type="text"] {
+    height: 2.75rem !important;
+    font-size: 1rem !important;
+  }
+  .simulator-content button:not([role="tab"]):not([data-state]) {
+    min-height: 2.75rem !important;
+    font-size: 0.9375rem !important;
+  }
+  .simulator-content [data-slot="switch"] {
+    transform: scale(1.15);
+  }
+
+  /* Single-column grids on mobile where not already handled */
+  .simulator-content .grid-cols-3 {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  }
+
+  /* Recharts — prevent overflow on small screens */
+  .simulator-content .recharts-wrapper {
+    max-width: 100% !important;
+  }
+}
+
+/* Scrollbar-none utility (used on bottom nav + tab strip) */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
