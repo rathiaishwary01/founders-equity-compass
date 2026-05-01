@@ -775,11 +775,10 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
               <TabsTrigger value="setup" className="flex-shrink-0 text-xs px-3 py-2">👥 Setup</TabsTrigger>
               <TabsTrigger value="rounds" className="flex-shrink-0 text-xs px-3 py-2">⚙️ Rounds</TabsTrigger>
               <TabsTrigger value="captable" className="flex-shrink-0 text-xs px-3 py-2">📋 Cap Table</TabsTrigger>
-              <TabsTrigger value="exit" className="flex-shrink-0 text-xs px-3 py-2">💰 Exit</TabsTrigger>
-              <TabsTrigger value="compare" className="flex-shrink-0 text-xs px-3 py-2">📊 Compare</TabsTrigger>
               <TabsTrigger value="veto" className={cn("flex-shrink-0 text-xs px-3 py-2", !expertMode && "opacity-30 pointer-events-none")}>🛡️ Veto</TabsTrigger>
               <TabsTrigger value="protect" className={cn("flex-shrink-0 text-xs px-3 py-2", !expertMode && "opacity-30 pointer-events-none")}>🔒 Protect</TabsTrigger>
-              <TabsTrigger value="playbook" className="flex-shrink-0 text-xs px-3 py-2">📖 Playbook</TabsTrigger>
+              <TabsTrigger value="exit" className="flex-shrink-0 text-xs px-3 py-2">💰 Exit</TabsTrigger>
+              <TabsTrigger value="compare" className="flex-shrink-0 text-xs px-3 py-2">📊 Compare</TabsTrigger>
             </TabsList>
           </div>
         </div>
