@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { EquiCompassLogo } from "@/components/EquiCompassLogo";
 import { useState } from "react";
 import { Simulator } from "@/components/Simulator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -22,13 +23,7 @@ function SimulatorPage() {
       <header style={{ background: "oklch(0.22 0.04 265)" }} className="border-b border-white/10">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3.5">
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div
-              className="flex h-8 w-8 items-center justify-center rounded-lg font-bold text-sm"
-              style={{ background: "oklch(0.76 0.15 285)", color: "oklch(0.22 0.04 265)" }}
-            >
-              E
-            </div>
-            <span className="font-semibold text-white text-base tracking-tight">EquiCompass</span>
+            <EquiCompassLogo variant="nav" dark={true} />
           </Link>
           <div className="flex items-center gap-3">
             <span className="hidden sm:inline text-xs text-white/40 font-medium">

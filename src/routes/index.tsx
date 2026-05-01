@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { EquiCompassLogo } from "@/components/EquiCompassLogo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -26,10 +27,7 @@ function Landing() {
       {/* ── Nav ──────────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b" style={{ borderColor: "oklch(0.22 0.04 265 / 0.08)" }}>
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg font-bold text-sm" style={{ background: "oklch(0.22 0.04 265)", color: "white" }}>E</div>
-            <span className="font-semibold text-base tracking-tight" style={{ color: "oklch(0.22 0.04 265)" }}>EquiCompass</span>
-          </div>
+          <EquiCompassLogo variant="nav" />
           <div className="flex items-center gap-2">
             <a href="https://github.com/EquiCompass/founders-equity-compass" target="_blank" rel="noopener noreferrer"
               className="hidden sm:flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full border transition-colors hover:bg-gray-50"
@@ -202,10 +200,7 @@ function Landing() {
       <footer className="border-t" style={{ borderColor: "oklch(0.22 0.04 265 / 0.08)" }}>
         <div className="mx-auto max-w-6xl px-6 py-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg font-bold text-sm" style={{ background: "oklch(0.22 0.04 265)", color: "white" }}>E</div>
-              <span className="font-semibold" style={{ color: "oklch(0.22 0.04 265)" }}>EquiCompass</span>
-            </div>
+            <EquiCompassLogo variant="nav" iconSize={26} className="mb-2" />
             <p className="text-xs max-w-md" style={{ color: "oklch(0.52 0.03 265)" }}>
               For negotiation planning only — not legal advice. MIT licence.
             </p>

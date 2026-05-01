@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { EquiCompassLogo } from "@/components/EquiCompassLogo";
 
 interface Section {
   heading: string;
@@ -11,10 +12,7 @@ export function LegalPage({ title, updated, sections }: { title: string; updated
       {/* Nav */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b" style={{ borderColor: "oklch(0.22 0.04 265 / 0.08)" }}>
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-3.5">
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg font-bold text-sm" style={{ background: "oklch(0.22 0.04 265)", color: "white" }}>E</div>
-            <span className="font-semibold text-base tracking-tight" style={{ color: "oklch(0.22 0.04 265)" }}>EquiCompass</span>
-          </Link>
+<Link to="/"><EquiCompassLogo variant="nav" /></Link>
           <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">← Back to home</Link>
         </div>
       </header>
