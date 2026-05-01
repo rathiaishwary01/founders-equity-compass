@@ -729,25 +729,27 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
     <div className="simulator-content space-y-4 pb-6 md:pb-6">
       {/* Summary Pills */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="p-3">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Founders Combined</div>
-          <div className="text-2xl font-extrabold mt-1">{founderPct.toFixed(1)}%</div>
-          <div className="text-[11px] text-muted-foreground">{founderPct > 51 ? "Majority" : founderPct > 35 ? "Caution" : "Minority"}</div>
+        <Card className="p-4 md:col-span-2 lg:col-span-1" style={{ background: "oklch(0.22 0.04 265)" }}>
+          <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.5)" }}>Founders Combined</div>
+          <div className="text-5xl font-extrabold mt-1 tracking-tight text-white">{founderPct.toFixed(1)}%</div>
+          <div className="text-xs mt-1 font-medium" style={{ color: founderPct > 51 ? "oklch(0.76 0.18 150)" : founderPct > 35 ? "oklch(0.85 0.18 75)" : "oklch(0.75 0.2 25)" }}>
+            {founderPct > 51 ? "Majority — you have control" : founderPct > 35 ? "Caution — watch dilution" : "Minority position"}
+          </div>
         </Card>
         <Card className="p-3">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Post-money Val.</div>
-          <div className="text-2xl font-extrabold mt-1">{fmtVal(latest.valuation)}</div>
-          <div className="text-[11px] text-muted-foreground">{latest.valuation ? latest.label : "Configure rounds"}</div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Post-money Val.</div>
+          <div className="text-xl font-bold mt-1 text-foreground">{fmtVal(latest.valuation)}</div>
+          <div className="text-xs text-muted-foreground">{latest.valuation ? latest.label : "Configure rounds"}</div>
         </Card>
         <Card className="p-3">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Board Control</div>
-          <div className="text-2xl font-extrabold mt-1">{latest.vcSeats === 0 ? "✅ Safe" : latest.vcSeats < founderSeats ? "✅ Safe" : latest.vcSeats === founderSeats ? "⚠️ Tied" : "🚨 Lost"}</div>
-          <div className="text-[11px] text-muted-foreground">F:{fSeatPct}% V:{vSeatPct}% I:{iSeatPct}%</div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Board Control</div>
+          <div className="text-xl font-bold mt-1 text-foreground">{latest.vcSeats === 0 ? "✅ Safe" : latest.vcSeats < founderSeats ? "✅ Safe" : latest.vcSeats === founderSeats ? "⚠️ Tied" : "🚨 Lost"}</div>
+          <div className="text-xs text-muted-foreground">F:{fSeatPct}% V:{vSeatPct}% I:{iSeatPct}%</div>
         </Card>
         <Card className="p-3">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Total Investor Stake</div>
-          <div className="text-2xl font-extrabold mt-1">{vcPct.toFixed(1)}%</div>
-          <div className="text-[11px] text-muted-foreground">
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total Investor Stake</div>
+          <div className="text-xl font-bold mt-1 text-foreground">{vcPct.toFixed(1)}%</div>
+          <div className="text-xs text-muted-foreground">
             {(() => {
               const names = [...latest.vcNames];
               if (latest.holders.some((h) => h.type === "safe")) names.unshift("SAFE");
@@ -901,7 +903,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                     )}
                     <div className="text-2xl mb-1.5">{opt.flag}</div>
                     <div className={cn("text-xs font-semibold leading-tight", isSelected ? "text-primary" : "text-foreground")}>{opt.title}</div>
-                    <div className="text-[10px] text-muted-foreground mt-1 leading-snug line-clamp-2">{opt.subtitle}</div>
+                    <div className="text-xs text-muted-foreground mt-1 leading-snug line-clamp-2">{opt.subtitle}</div>
                   </button>
                 );
               })}
@@ -938,7 +940,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">?</button>
+                    <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">?</button>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-[220px] text-xs">
                     <p className="font-bold text-primary mb-1">Founder Directors</p>
@@ -967,7 +969,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">?</button>
+                    <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">?</button>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-[260px] text-xs">
                     <p className="font-bold text-primary mb-1">Board Retention Threshold</p>
@@ -996,7 +998,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
               <span className="text-sm font-semibold">%</span>
               <span className="text-xs text-muted-foreground">collective founder equity (fully diluted)</span>
             </div>
-            <div className="mt-2 text-[11px] text-muted-foreground bg-muted/40 rounded px-2 py-1">
+            <div className="mt-2 text-xs text-muted-foreground bg-muted/40 rounded px-2 py-1">
               {isUS ? "💡 US default: 10% — Delaware / NVCA standard. Negotiate to 5% before signing." : "💡 India default: 15% — typical in SHA from Seed onward. Push to 10% and exclude VC-dilution rounds."}
             </div>
           </Card>
@@ -1006,7 +1008,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             <Accordion type="single" collapsible>
               <AccordionItem value="day0" className="border-0">
                 <AccordionTrigger className="py-0 hover:no-underline">
-                  <div className="font-bold text-sm">📋 Day 0 Legal Checklist</div>
+                  <div className="font-semibold text-sm text-foreground">Day 0 Legal Checklist</div>
                 </AccordionTrigger>
                 <AccordionContent className="pt-3">
                 <p className="text-xs text-muted-foreground mb-3">
@@ -1074,7 +1076,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                         <span className="text-sm mt-0.5">{item.critical ? "⚠️" : "✓"}</span>
                         <div className="flex-1">
                           <div className="text-xs font-semibold">{item.label}</div>
-                          <div className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">{item.detail}</div>
+                          <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{item.detail}</div>
                         </div>
                       </div>
                     </div>
@@ -1089,13 +1091,13 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
 
           {/* India Entity Structure Card — only for india-flip */}
           {isFlip && (
-            <Card className="p-4 border-l-4" style={{ borderLeftColor: "oklch(0.76 0.15 285)" }}>
+            <Card className="p-4 border-l-4" style={{ borderLeftColor: "oklch(0.5 0.03 265 / 0.4)" }}>
               <Accordion type="single" collapsible>
                 <AccordionItem value="flip" className="border-0">
                   <AccordionTrigger className="py-0 hover:no-underline">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm">🏗️ India → US Flip Structure</span>
-                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: "oklch(0.76 0.15 285 / 0.2)", color: "oklch(0.22 0.04 265)" }}>Required before US VC</span>
+                      <span className="font-semibold text-sm text-foreground">🏗️ India → US Flip Structure</span>
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ background: "oklch(0.76 0.15 285 / 0.2)", color: "oklch(0.22 0.04 265)" }}>Required before US VC</span>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="pt-3">
@@ -1132,19 +1134,19 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                 ].map((s) => (
                   <div key={s.step} className={`rounded-md border p-2.5 ${s.critical ? "border-amber-200 bg-amber-50/50" : "border-border bg-muted/10"}`}>
                     <div className="flex gap-2.5 items-start">
-                      <div className="flex-shrink-0 h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{ background: "oklch(0.22 0.04 265)" }}>{s.step}</div>
+                      <div className="flex-shrink-0 h-5 w-5 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: "oklch(0.22 0.04 265)" }}>{s.step}</div>
                       <div>
                         <div className="text-xs font-semibold">{s.title}</div>
-                        <div className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">{s.detail}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{s.detail}</div>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-              <div className="rounded-md bg-muted/40 px-3 py-2 text-[10px] text-muted-foreground leading-relaxed">
+              <div className="rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground leading-relaxed">
                 <span className="font-semibold text-foreground">Key regulations:</span> FEMA 1999 · RBI Master Direction on ODI (2022) · Companies Act 2013 (Section 2(87) subsidiary definition) · Income Tax Act Section 9 (deemed income for IP held abroad). Start this process <span className="font-semibold text-foreground">3–4 months before</span> you need to sign a US term sheet. Do not sign a term sheet before the Delaware entity exists — restructuring post-investment is extremely expensive (₹15–40L in legal/CA fees).
               </div>
-              <div className="mt-2.5 rounded-md border border-blue-200 bg-blue-50/50 px-3 py-2 text-[10px] leading-relaxed">
+              <div className="mt-2.5 rounded-md border border-blue-200 bg-blue-50/50 px-3 py-2 text-xs leading-relaxed">
                 <span className="font-semibold">Transfer pricing:</span> All transactions between the India Pvt Ltd and the Delaware parent (software licences, management fees, shared services) must be at arm's length under Section 92 of the Income Tax Act. Document these with a Transfer Pricing study. Undocumented intra-group charges are the #1 India tax audit trigger for VC-backed startups.
               </div>
               </AccordionContent>
@@ -1156,7 +1158,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
           {/* Pre-funding Cap Table Editor */}
           <Card className="p-4">
             <div className="flex items-center justify-between mb-3">
-              <div className="font-bold text-sm">👥 Pre-funding Cap Table</div>
+              <div className="font-semibold text-sm text-foreground">👥 Pre-funding Cap Table</div>
               <div className={cn(
                 "text-xs font-bold px-2 py-0.5 rounded-full",
                 founderSumOk ? "bg-emerald-500/15 text-emerald-700" : "bg-red-500/15 text-red-600",
@@ -1166,7 +1168,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             </div>
             <table className="w-full text-xs mb-3">
               <thead>
-                <tr className="text-[10px] uppercase text-muted-foreground border-b">
+                <tr className="text-xs uppercase text-muted-foreground border-b">
                   <th className="text-left py-1.5 pr-2">Name</th>
                   <th className="text-left py-1.5 pr-2">Role</th>
                   <th className="text-right py-1.5 pr-2 w-20">Equity %</th>
@@ -1248,7 +1250,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
               </div>
             )}
             {!founderSumOk && (
-              <p className="text-[10px] text-red-500 mt-2">
+              <p className="text-xs text-red-500 mt-2">
                 Equity must sum to exactly 100%. Current total: {founderSum.toFixed(1)}%.
               </p>
             )}
@@ -1277,7 +1279,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                 <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
                   <div>
                     <div className="text-xs font-semibold">MFN / No cap (YC standard)</div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5">Converts at the next round's pre-money price — same as other investors. No cap, no discount.</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Converts at the next round's pre-money price — same as other investors. No cap, no discount.</div>
                   </div>
                   <Switch
                     checked={state.safe.mfn ?? false}
@@ -1305,11 +1307,11 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <div className="flex items-center gap-1.5 mb-1">
-                      <Label className="text-[10px] uppercase text-muted-foreground">Amount ($M)</Label>
+                      <Label className="text-xs uppercase text-muted-foreground">Amount ($M)</Label>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">?</button>
+                            <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">?</button>
                           </TooltipTrigger>
                           <TooltipContent className="max-w-[220px] text-xs">
                             <p className="font-bold text-primary mb-1">SAFE Amount</p>
@@ -1325,17 +1327,17 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                       className={validationErrors["safe-amount"] ? "border-red-400" : ""}
                       onChange={(e) => { updateSafe("amount", parseFloat(e.target.value) || 0); }}
                     />
-                    {validationErrors["safe-amount"] && <p className="text-[10px] text-red-500 mt-1">{validationErrors["safe-amount"]}</p>}
+                    {validationErrors["safe-amount"] && <p className="text-xs text-red-500 mt-1">{validationErrors["safe-amount"]}</p>}
                   </div>
 
                   {!state.safe.mfn && <>
                     <div>
                       <div className="flex items-center gap-1.5 mb-1">
-                        <Label className="text-[10px] uppercase text-muted-foreground">Valuation Cap ($M)</Label>
+                        <Label className="text-xs uppercase text-muted-foreground">Valuation Cap ($M)</Label>
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">?</button>
+                              <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">?</button>
                             </TooltipTrigger>
                             <TooltipContent className="max-w-[220px] text-xs">
                               <p className="font-bold text-primary mb-1">Valuation Cap</p>
@@ -1351,15 +1353,15 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                         className={validationErrors["safe-cap"] ? "border-red-400" : ""}
                         onChange={(e) => { updateSafe("cap", parseFloat(e.target.value) || 0); }}
                       />
-                      {validationErrors["safe-cap"] && <p className="text-[10px] text-red-500 mt-1">{validationErrors["safe-cap"]}</p>}
+                      {validationErrors["safe-cap"] && <p className="text-xs text-red-500 mt-1">{validationErrors["safe-cap"]}</p>}
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5 mb-1">
-                        <Label className="text-[10px] uppercase text-muted-foreground">Discount (%)</Label>
+                        <Label className="text-xs uppercase text-muted-foreground">Discount (%)</Label>
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">?</button>
+                              <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">?</button>
                             </TooltipTrigger>
                             <TooltipContent className="max-w-[220px] text-xs">
                               <p className="font-bold text-primary mb-1">SAFE Discount</p>
@@ -1375,13 +1377,13 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                         className={validationErrors["safe-discount"] ? "border-red-400" : ""}
                         onChange={(e) => { updateSafe("discount", parseFloat(e.target.value) || 0); }}
                       />
-                      {validationErrors["safe-discount"] && <p className="text-[10px] text-red-500 mt-1">{validationErrors["safe-discount"]}</p>}
+                      {validationErrors["safe-discount"] && <p className="text-xs text-red-500 mt-1">{validationErrors["safe-discount"]}</p>}
                     </div>
                   </>}
                 </div>
 
                 {state.safe.mfn && (
-                  <div className="rounded-md bg-blue-50 border border-blue-200 px-3 py-2 text-[10px] text-blue-700 dark:bg-blue-950/40 dark:border-blue-800 dark:text-blue-200">
+                  <div className="rounded-md bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-700 dark:bg-blue-950/40 dark:border-blue-800 dark:text-blue-200">
                     MFN SAFE converts at the next priced round's pre-money valuation — no cap, no discount. This matches the YC $375K standard SAFE.
                   </div>
                 )}
@@ -1412,7 +1414,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
                     <div>
                       <div className="text-xs font-semibold">Single-trigger acceleration at exit</div>
-                      <div className="text-[10px] text-muted-foreground mt-0.5">
+                      <div className="text-xs text-muted-foreground mt-0.5">
                         All unvested equity vests immediately on acquisition. Market standard — always negotiate for it.
                       </div>
                     </div>
@@ -1431,20 +1433,20 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                         <div className="flex items-center justify-between">
                           <div>
                             <div className="text-xs font-bold">{f.name}</div>
-                            <div className="text-[10px] text-muted-foreground">{f.role}</div>
+                            <div className="text-xs text-muted-foreground">{f.role}</div>
                           </div>
                           <div className="text-right">
                             <div className="text-sm font-bold" style={{ color: HOLDER_COLORS[f.name] }}>
                               {(vFrac * 100).toFixed(0)}% vested
                             </div>
                             {v.elapsedMonths < v.cliffMonths && (
-                              <div className="text-[10px] text-muted-foreground">Cliff not reached</div>
+                              <div className="text-xs text-muted-foreground">Cliff not reached</div>
                             )}
                           </div>
                         </div>
                         <div className="grid grid-cols-3 gap-2">
                           <div>
-                            <Label className="text-[10px] uppercase text-muted-foreground">Cliff (mo.)</Label>
+                            <Label className="text-xs uppercase text-muted-foreground">Cliff (mo.)</Label>
                             <Input
                               type="number"
                               min={0}
@@ -1455,7 +1457,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                             />
                           </div>
                           <div>
-                            <Label className="text-[10px] uppercase text-muted-foreground">Total (mo.)</Label>
+                            <Label className="text-xs uppercase text-muted-foreground">Total (mo.)</Label>
                             <Input
                               type="number"
                               min={12}
@@ -1466,7 +1468,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                             />
                           </div>
                           <div>
-                            <Label className="text-[10px] uppercase text-muted-foreground">Elapsed (mo.)</Label>
+                            <Label className="text-xs uppercase text-muted-foreground">Elapsed (mo.)</Label>
                             <Input
                               type="number"
                               min={0}
@@ -1513,8 +1515,8 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
 
           {/* SECTION A — Insight Engine */}
           <Card className="p-4 bg-[#1a1a2e] text-white">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-white/70 mb-2">
-              📊 Founder Outcome Summary
+            <div className="text-xs font-semibold uppercase tracking-wide text-white/70 mb-2">
+              Founder Outcome Summary
             </div>
             <div className="text-sm font-semibold leading-snug">
               {!anyRoundsEnabled ? (
@@ -1583,7 +1585,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                           });
                         }
                       }}
-                      className="rounded-lg border border-dashed border-primary/40 bg-primary/5 px-2 py-1 text-[10px] font-semibold text-primary hover:bg-primary/10 transition-colors"
+                      className="rounded-lg border border-dashed border-primary/40 bg-primary/5 px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors"
                     >
                       ⚡ YC Standard
                     </button>
@@ -1591,7 +1593,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   <Switch checked={r.enabled} disabled={readOnly} onCheckedChange={(v) => updateRound(k, { enabled: v })} />
                 </div>
                 {isPreSeed && r.enabled && (
-                  <div className="mb-3 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-[10px] text-amber-800 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-200">
+                  <div className="mb-3 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-200">
                     {isUS
                       ? "YC deal: $125K for 7% direct equity + $375K MFN SAFE (enable SAFE panel above). Pre-money auto-set to $1.661M so raise ÷ post = 7%."
                       : "Pre-seed equity round — typically angels, accelerators, or friends & family. No ESOP top-up required at this stage."}
@@ -1603,11 +1605,11 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <div className="flex items-center gap-1.5 mb-1">
-                          <Label className="text-[10px] uppercase text-muted-foreground">Pre-money ($M)</Label>
+                          <Label className="text-xs uppercase text-muted-foreground">Pre-money ($M)</Label>
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">?</button>
+                                <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">?</button>
                               </TooltipTrigger>
                               <TooltipContent className="max-w-[220px] text-xs">
                                 <p className="font-bold text-primary mb-1">Pre-money</p>
@@ -1619,15 +1621,15 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                         <Input type="number" value={r.preMoney} disabled={readOnly}
                           className={validationErrors[`${k}-pre`] ? "border-red-400" : ""}
                           onChange={(e) => updateRound(k, { preMoney: parseFloat(e.target.value) || 0 })} />
-                        {validationErrors[`${k}-pre`] && <p className="text-[10px] text-red-500 mt-1">{validationErrors[`${k}-pre`]}</p>}
+                        {validationErrors[`${k}-pre`] && <p className="text-xs text-red-500 mt-1">{validationErrors[`${k}-pre`]}</p>}
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5 mb-1">
-                          <Label className="text-[10px] uppercase text-muted-foreground">Raise ($M)</Label>
+                          <Label className="text-xs uppercase text-muted-foreground">Raise ($M)</Label>
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">?</button>
+                                <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">?</button>
                               </TooltipTrigger>
                               <TooltipContent className="max-w-[220px] text-xs">
                                 <p className="font-bold text-primary mb-1">Raise</p>
@@ -1639,15 +1641,15 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                         <Input type="number" value={r.raise} disabled={readOnly}
                           className={validationErrors[`${k}-raise`] ? "border-red-400" : ""}
                           onChange={(e) => updateRound(k, { raise: parseFloat(e.target.value) || 0 })} />
-                        {validationErrors[`${k}-raise`] && <p className="text-[10px] text-red-500 mt-1">{validationErrors[`${k}-raise`]}</p>}
+                        {validationErrors[`${k}-raise`] && <p className="text-xs text-red-500 mt-1">{validationErrors[`${k}-raise`]}</p>}
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5 mb-1">
-                          <Label className="text-[10px] uppercase text-muted-foreground">ESOP post (%)</Label>
+                          <Label className="text-xs uppercase text-muted-foreground">ESOP post (%)</Label>
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">?</button>
+                                <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">?</button>
                               </TooltipTrigger>
                               <TooltipContent className="max-w-[220px] text-xs">
                                 <p className="font-bold text-primary mb-1">ESOP post (%)</p>
@@ -1661,15 +1663,15 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                         <Input type="number" value={r.esop} disabled={readOnly}
                           className={validationErrors[`${k}-esop`] ? "border-red-400" : ""}
                           onChange={(e) => updateRound(k, { esop: parseFloat(e.target.value) || 0 })} />
-                        {validationErrors[`${k}-esop`] && <p className="text-[10px] text-red-500 mt-1">{validationErrors[`${k}-esop`]}</p>}
+                        {validationErrors[`${k}-esop`] && <p className="text-xs text-red-500 mt-1">{validationErrors[`${k}-esop`]}</p>}
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5 mb-1">
-                          <Label className="text-[10px] uppercase text-muted-foreground">VC Board Seat</Label>
+                          <Label className="text-xs uppercase text-muted-foreground">VC Board Seat</Label>
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">?</button>
+                                <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">?</button>
                               </TooltipTrigger>
                               <TooltipContent className="max-w-[220px] text-xs">
                                 <p className="font-bold text-primary mb-1">VC Board Seat</p>
@@ -1689,11 +1691,11 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                       </div>
                       {expertMode && <div>
                         <div className="flex items-center gap-1.5 mb-1">
-                          <Label className="text-[10px] uppercase text-muted-foreground">Liq Pref Multiple</Label>
+                          <Label className="text-xs uppercase text-muted-foreground">Liq Pref Multiple</Label>
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">?</button>
+                                <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">?</button>
                               </TooltipTrigger>
                               <TooltipContent className="max-w-[220px] text-xs">
                                 <p className="font-bold text-primary mb-1">Liquidation Preference Multiple</p>
@@ -1713,11 +1715,11 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                       </div>}
                       {expertMode && <div>
                         <div className="flex items-center gap-1.5 mb-1">
-                          <Label className="text-[10px] uppercase text-muted-foreground">Pref Type</Label>
+                          <Label className="text-xs uppercase text-muted-foreground">Pref Type</Label>
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">?</button>
+                                <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">?</button>
                               </TooltipTrigger>
                               <TooltipContent className="max-w-[220px] text-xs">
                                 <p className="font-bold text-primary mb-1">Preference Type</p>
@@ -1736,11 +1738,11 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                       </div>}
                       {expertMode && !isPreSeed && <div>
                         <div className="flex items-center gap-1.5 mb-1">
-                          <Label className="text-[10px] uppercase text-muted-foreground">Anti-dilution</Label>
+                          <Label className="text-xs uppercase text-muted-foreground">Anti-dilution</Label>
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">?</button>
+                                <button className="w-4 h-4 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">?</button>
                               </TooltipTrigger>
                               <TooltipContent className="max-w-[280px] text-xs">
                                 <p className="font-bold text-primary mb-1">Anti-dilution Protection</p>
@@ -1764,7 +1766,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                           </SelectContent>
                         </Select>
                         {r.antiDilution === "full-ratchet" && (
-                          <div className="mt-2 p-2 rounded-md bg-red-500/10 border border-red-500/30 text-[10px] text-red-700 leading-relaxed">
+                          <div className="mt-2 p-2 rounded-md bg-red-500/10 border border-red-500/30 text-xs text-red-700 leading-relaxed">
                             <span className="font-bold">⚠️ Full-ratchet is not market standard anywhere.</span> At a 50% down round, this VC's stake doubles at your expense. Push back to BBWA in every negotiation — cite NVCA Model Documents (US) or standard Blume/Elevation/Accel term sheets (India) as your anchor.
                           </div>
                         )}
@@ -1784,7 +1786,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                             <div className="space-y-2 pl-1">
                               <div className="flex items-center gap-3">
                                 <div className="flex-1">
-                                  <Label className="text-[10px] text-muted-foreground">Trigger (years)</Label>
+                                  <Label className="text-xs text-muted-foreground">Trigger (years)</Label>
                                   <Input
                                     type="number" min={1} max={10} step={1}
                                     value={r.redemptionYears ?? 5}
@@ -1794,7 +1796,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                                   />
                                 </div>
                                 <div className="flex-1">
-                                  <Label className="text-[10px] text-muted-foreground">Multiple on cost</Label>
+                                  <Label className="text-xs text-muted-foreground">Multiple on cost</Label>
                                   <Select
                                     value={String(r.redemptionMultiple ?? 1)}
                                     disabled={readOnly}
@@ -1810,7 +1812,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                                   </Select>
                                 </div>
                               </div>
-                              <div className="p-2 rounded-md bg-orange-500/10 border border-orange-500/30 text-[10px] text-orange-800 dark:text-orange-300">
+                              <div className="p-2 rounded-md bg-orange-500/10 border border-orange-500/30 text-xs text-orange-800 dark:text-orange-300">
                                 ⚠️ Cash liability: <span className="font-bold">{fmtM(r.raise * (r.redemptionMultiple ?? 1))}</span> due after{" "}
                                 <span className="font-bold">{r.redemptionYears ?? 5} years</span> if triggered.{" "}
                                 {isUS
@@ -1830,7 +1832,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                           <span className="text-muted-foreground font-normal">({isUS ? "US" : "India"} norm: {bench.lo}–{bench.hi}%)</span>
                         </span>
                       </div>
-                      {dil > 0 && <div className="mt-1 text-[10px] text-muted-foreground">{benchNote}</div>}
+                      {dil > 0 && <div className="mt-1 text-xs text-muted-foreground">{benchNote}</div>}
                     </div>
                     {/* Down-round warning — shown when this round's pre < previous post */}
                     {(() => {
@@ -1865,7 +1867,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                       const hasFR = frRounds.length > 0;
                       return (
                         <div className={cn(
-                          "rounded-md border px-3 py-2.5 text-[10px] space-y-1.5",
+                          "rounded-md border px-3 py-2.5 text-xs space-y-1.5",
                           hasFR
                             ? "border-red-500/50 bg-red-500/8 text-red-700"
                             : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300",
@@ -1902,7 +1904,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
           {/* SECTION B — Founder Playbook */}
           <Card className="p-4">
             <div className="flex items-center justify-between mb-1">
-              <div className="font-bold text-sm">🧭 Founder Playbook</div>
+              <div className="font-semibold text-sm text-foreground">Founder Playbook</div>
               <Badge className="bg-primary/10 text-primary border border-primary/30">{recommendations.length} actions</Badge>
             </div>
             <p className="text-xs text-muted-foreground mb-4">Personalised to your current scenario. Each action includes the exact next step to take.</p>
@@ -1916,9 +1918,9 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   { key: "ongoing",    label: "Ongoing",            icon: "🔵", borderColor: "border-blue-300",   bgColor: "bg-blue-50 dark:bg-blue-950/30" },
                 ];
                 const priorityBadge = (p: string) => {
-                  if (p === "critical") return <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300">Critical</span>;
-                  if (p === "high")     return <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">High</span>;
-                  return                       <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">Medium</span>;
+                  if (p === "critical") return <span className="text-xs font-bold uppercase px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300">Critical</span>;
+                  if (p === "high")     return <span className="text-xs font-bold uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">High</span>;
+                  return                       <span className="text-xs font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">Medium</span>;
                 };
                 return (
                   <div className="space-y-5">
@@ -1941,11 +1943,11 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                                 </div>
                                 <div className="text-xs text-foreground/80 leading-relaxed">{r.why}</div>
                                 <div className={cn("rounded-lg p-2.5 border", key === "now" ? "bg-white/70 border-red-200 dark:bg-black/20 dark:border-red-800" : key === "next-round" ? "bg-white/70 border-amber-200 dark:bg-black/20 dark:border-amber-800" : "bg-white/70 border-blue-200 dark:bg-black/20 dark:border-blue-800")}>
-                                  <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">→ Next Step</div>
+                                  <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">→ Next Step</div>
                                   <div className="text-xs leading-relaxed">{r.nextStep}</div>
                                 </div>
                                 {r.leverage && (
-                                  <div className="text-[11px] text-muted-foreground italic leading-relaxed">
+                                  <div className="text-xs text-muted-foreground italic leading-relaxed">
                                     💡 <span className="font-semibold">Leverage: </span>{r.leverage}
                                   </div>
                                 )}
@@ -1994,7 +1996,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             </div>
             <table className="w-full text-sm mt-3">
               <thead>
-                <tr className="text-[10px] uppercase text-muted-foreground border-b">
+                <tr className="text-xs uppercase text-muted-foreground border-b">
                   <th className="text-left py-2">Stakeholder</th>
                   <th className="text-right py-2">%</th>
                   <th className="text-right py-2">Type</th>
@@ -2003,7 +2005,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
               <tbody>
                 {[...activeCap.holders].sort((a, b) => b.pct - a.pct).map((h, i) => (
                   <tr key={i} className="border-b last:border-0">
-                    <td className="py-2"><strong>{h.name}</strong><div className="text-[10px] text-muted-foreground">{h.role}</div></td>
+                    <td className="py-2"><strong>{h.name}</strong><div className="text-xs text-muted-foreground">{h.role}</div></td>
                     <td className="text-right font-bold py-2" style={{ color: HOLDER_COLORS[h.name] }}>{h.pct.toFixed(2)}%</td>
                     <td className="text-right py-2"><Badge variant="secondary">{h.type}</Badge></td>
                   </tr>
@@ -2013,7 +2015,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
           </Card>
 
           <Card className="p-4">
-            <div className="font-bold text-sm mb-3">📉 Dilution over time</div>
+            <div className="font-semibold text-sm mb-3 text-foreground">Dilution over time</div>
             <div className="h-64">
               <ResponsiveContainer>
                 <LineChart data={lineData}>
@@ -2039,8 +2041,8 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             return (
               <Card className="p-4 border-red-500/50">
                 <div className="flex items-center gap-2 mb-1">
-                  <div className="font-bold text-sm text-red-700">🚨 Full-Ratchet Anti-Dilution Impact</div>
-                  <Badge className="bg-red-500/15 text-red-700 border border-red-500/30 text-[10px]">Active</Badge>
+                  <div className="font-bold text-sm text-red-700">Full-Ratchet Anti-Dilution Impact</div>
+                  <Badge className="bg-red-500/15 text-red-700 border border-red-500/30 text-xs">Active</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mb-4">
                   Full-ratchet resets the VC's conversion price to the down-round price. This table shows what your founders' equity would be under each scenario.
@@ -2048,7 +2050,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="border-b text-[10px] uppercase text-muted-foreground">
+                      <tr className="border-b text-xs uppercase text-muted-foreground">
                         <th className="text-left py-1.5 pr-3">Scenario</th>
                         <th className="text-right py-1.5 px-2">Founder Equity</th>
                         <th className="text-right py-1.5 px-2">vs. Full-Ratchet</th>
@@ -2077,7 +2079,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                     </tbody>
                   </table>
                 </div>
-                <div className="mt-3 text-[10px] text-red-700 bg-red-500/5 rounded px-2.5 py-2 leading-relaxed">
+                <div className="mt-3 text-xs text-red-700 bg-red-500/5 rounded px-2.5 py-2 leading-relaxed">
                   <span className="font-bold">You are losing {costVsBBWA}pp of equity vs. BBWA.</span>{" "}
                   Use the down round as your renegotiation window — insist on converting full-ratchet → BBWA as a condition of closing.
                   VCs participating in the new round want it to close: that's your leverage.
@@ -2093,8 +2095,8 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             return (
               <Card className="p-4">
                 <div className="flex items-center justify-between mb-1">
-                  <div className="font-semibold text-sm">🛤️ Board Seat Runway</div>
-                  <div className="text-[10px] text-muted-foreground">≥{twoSeatThreshold}% = 2 seats · ≥{oneSeatThreshold}% = 1 seat · below = 0</div>
+                  <div className="font-semibold text-sm">Board Seat Runway</div>
+                  <div className="text-xs text-muted-foreground">≥{twoSeatThreshold}% = 2 seats · ≥{oneSeatThreshold}% = 1 seat · below = 0</div>
                 </div>
                 <p className="text-xs text-muted-foreground mb-4">How many founder director seats you can defend at each stage, based on collective equity vs. your SHA thresholds.</p>
                 <div className="flex items-end gap-3 overflow-x-auto pb-1 scrollbar-none">
@@ -2112,16 +2114,16 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                         )}>
                           {regime}
                         </div>
-                        <div className="text-[10px] text-muted-foreground text-center leading-tight w-14">{snap.label}</div>
+                        <div className="text-xs text-muted-foreground text-center leading-tight w-14">{snap.label}</div>
                         <div className={cn(
-                          "text-[10px] font-semibold",
+                          "text-xs font-semibold",
                           regime === "2" ? "text-emerald-600" : regime === "1" ? "text-amber-600" : "text-red-600",
                         )}>{fEq.toFixed(0)}%</div>
                       </div>
                     );
                   })}
                 </div>
-                <div className="mt-4 flex flex-wrap gap-4 text-[10px] text-muted-foreground">
+                <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground">
                   <span><span className="font-bold text-emerald-600">● 2</span> Both founder directors safe</span>
                   <span><span className="font-bold text-amber-600">● 1</span> One seat at risk — form a bloc</span>
                   <span><span className="font-bold text-red-600">● 0</span> SHA forces resignation</span>
@@ -2133,7 +2135,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
           {/* ── Individual Founder Nomination Eligibility ── */}
           {founderOnlyHolders.length > 0 && (
             <Card className="p-4">
-              <div className="font-semibold text-sm mb-1">👤 Individual Nomination Eligibility</div>
+              <div className="font-semibold text-sm mb-1">Individual Nomination Eligibility</div>
               <p className="text-xs text-muted-foreground mb-3">
                 Each founder can self-nominate as a director only while they personally hold ≥5%. Below that, VCs can challenge the nomination in a shareholder vote — and win.
                 A <span className="font-semibold">Founder Voting Agreement</span> (all founders pledge to vote each other in) fixes this regardless of individual stake size.
@@ -2141,7 +2143,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b text-[10px] uppercase text-muted-foreground">
+                    <tr className="border-b text-xs uppercase text-muted-foreground">
                       <th className="text-left py-1.5 pr-3">Founder</th>
                       {snapKeys.map((k) => (
                         <th key={k} className="text-right py-1.5 px-2 whitespace-nowrap">{snaps[k].label}</th>
@@ -2158,7 +2160,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                           const ineligible = pct < 5;
                           return (
                             <td key={k} className={cn("py-2 px-2 text-right font-medium", ineligible ? "text-red-600" : "text-emerald-600")}>
-                              {pct.toFixed(1)}%{ineligible && <span className="ml-0.5 text-[9px]">⚠</span>}
+                              {pct.toFixed(1)}%{ineligible && <span className="ml-0.5 text-xs">⚠</span>}
                             </td>
                           );
                         })}
@@ -2167,7 +2169,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   </tbody>
                 </table>
               </div>
-              <div className="mt-3 text-[10px] text-muted-foreground bg-amber-500/5 border border-amber-500/25 rounded px-2.5 py-2 leading-relaxed">
+              <div className="mt-3 text-xs text-muted-foreground bg-amber-500/5 border border-amber-500/25 rounded px-2.5 py-2 leading-relaxed">
                 <span className="font-semibold text-amber-700">⚠ Red = below 5% individual floor.</span> Fix before first round: all founders sign a Voting Agreement pledging to vote their shares to elect each other as directors — this keeps 2 seats safe even after heavy individual dilution.
               </div>
             </Card>
@@ -2193,9 +2195,9 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             return (
               <Card key={k} className={cn("p-4", belowRetention && "border-red-500/50")}>
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-[11px] font-bold uppercase text-muted-foreground">{snap.label}</div>
+                  <div className="text-xs font-bold uppercase text-muted-foreground">{snap.label}</div>
                   {belowRetention && (
-                    <div className="text-[10px] font-bold text-red-600 bg-red-500/10 border border-red-500/30 rounded-full px-2 py-0.5">
+                    <div className="text-xs font-bold text-red-600 bg-red-500/10 border border-red-500/30 rounded-full px-2 py-0.5">
                       ⚠️ Below retention threshold
                     </div>
                   )}
@@ -2229,18 +2231,18 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   <div className="bg-danger" style={{ width: vp + "%" }} />
                   <div className="bg-success" style={{ width: ip + "%" }} />
                 </div>
-                <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground">
+                <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
                   <span>● Founders {fp}%</span><span>● VCs {vp}%</span><span>● Independent {ip}%</span>
                   <span className="ml-auto">Founder equity: {snapFounderEquityPct.toFixed(1)}%</span>
                 </div>
                 <div className={cn(
-                  "mt-2 inline-block text-[11px] font-bold px-3 py-1 rounded-full",
+                  "mt-2 inline-block text-xs font-bold px-3 py-1 rounded-full",
                   danger ? "bg-danger/10 text-danger" : tied ? "bg-warning/15 text-warning-foreground" : "bg-success/10 text-success",
                 )}>
                   {danger ? `VC-controlled: ${vp}% vs founders ${fp}%` : tied ? `Tied — independent decides` : `Founder-controlled: ${fp}% vs ${vp}%`}
                 </div>
                 {/* Voting bloc strength */}
-                <div className="mt-2 text-[10px] text-muted-foreground flex items-center gap-1.5">
+                <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1.5">
                   <span>🗳️ Founder voting bloc:</span>
                   <span className={cn(
                     "font-semibold",
@@ -2258,7 +2260,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   </span>
                 </div>
                 {belowRetention && (
-                  <div className="mt-3 p-2.5 rounded-md bg-red-500/8 border border-red-500/25 text-[11px] text-red-700 leading-relaxed">
+                  <div className="mt-3 p-2.5 rounded-md bg-red-500/8 border border-red-500/25 text-xs text-red-700 leading-relaxed">
                     <span className="font-bold">SHA Board Retention Clause triggered.</span> Founders hold {snapFounderEquityPct.toFixed(1)}% equity — below the {retentionThreshold}% threshold set in your SHA. Under standard {isUS ? "IRA / SHA" : "SHA"} language, founders are required to resign all {founderSeats} director seat{founderSeats > 1 ? "s" : ""}. The independent director and VC directors would then fully control the board.{" "}
                     <span className="font-semibold">Negotiate this clause out before signing — or push the threshold down to {isUS ? "5%" : "10%"}.</span>
                   </div>
@@ -2271,7 +2273,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
         {/* ── VETO ── */}
         <TabsContent value="veto" className="space-y-3 mt-4">
           <Card className="p-4">
-            <div className="font-bold text-sm">🛡️ VC Veto Rights — Active Triggers</div>
+            <div className="font-semibold text-sm text-foreground">VC Veto Rights — Active Triggers</div>
             <div className="text-xs text-muted-foreground mt-1">
               Tap any item to see what VCs demand, what to push back to, and the exact clause to negotiate.
             </div>
@@ -2576,7 +2578,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                         <span className={cn("h-2.5 w-2.5 rounded-full flex-shrink-0", it.active ? "bg-red-500" : "bg-emerald-400")} />
                         <span className="text-sm font-semibold text-left leading-snug">{it.title}</span>
                       </div>
-                      <Badge className={cn("text-[10px] ml-2 flex-shrink-0", it.active ? "bg-red-500/15 text-red-600 border border-red-500/30" : "bg-emerald-500/15 text-emerald-700 border border-emerald-500/30")}>
+                      <Badge className={cn("text-xs ml-2 flex-shrink-0", it.active ? "bg-red-500/15 text-red-600 border border-red-500/30" : "bg-emerald-500/15 text-emerald-700 border border-emerald-500/30")}>
                         {it.active ? "ACTIVE" : "INACTIVE"}
                       </Badge>
                     </div>
@@ -2630,9 +2632,9 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                               <span className="text-sm">{icon}</span>
                               <span className="text-xs font-bold uppercase tracking-wide">{label}</span>
                               {activeCount > 0 && (
-                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">{activeCount} active</span>
+                                <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">{activeCount} active</span>
                               )}
-                              <span className="ml-auto text-[10px] text-muted-foreground font-normal mr-1">{groupItems.length} items</span>
+                              <span className="ml-auto text-xs text-muted-foreground font-normal mr-1">{groupItems.length} items</span>
                             </div>
                           </AccordionTrigger>
                           <AccordionContent className="pb-3 pt-1">
@@ -2650,7 +2652,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
           </Card>
 
           <Card className="p-4">
-            <div className="font-bold text-sm mb-1">🎯 Key Ownership Thresholds</div>
+            <div className="font-semibold text-sm mb-1 text-foreground">Key Ownership Thresholds</div>
             <div className="text-xs text-muted-foreground mb-4">Tap any threshold to see exactly what powers change hands when it is crossed.</div>
             {(() => {
               const thresholds = [
@@ -2753,7 +2755,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <span className="text-xs font-bold text-muted-foreground">{t.threshold}</span>
-                            <Badge className={cn("text-[10px]", t.ok ? "bg-emerald-500/15 text-emerald-700 border border-emerald-500/30" : "bg-red-500/15 text-red-600 border border-red-500/30")}>
+                            <Badge className={cn("text-xs", t.ok ? "bg-emerald-500/15 text-emerald-700 border border-emerald-500/30" : "bg-red-500/15 text-red-600 border border-red-500/30")}>
                               {t.ok ? "SAFE" : "BREACHED"}
                             </Badge>
                           </div>
@@ -2762,20 +2764,20 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                       <AccordionContent className="pt-1 pb-3">
                         <div className="space-y-3">
                           <div>
-                            <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">Why this threshold matters</div>
+                            <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">Why this threshold matters</div>
                             <div className="text-xs leading-relaxed">{t.meaning}</div>
                           </div>
                           <div className={cn("rounded-lg p-2.5 border", t.ok ? "bg-emerald-50/80 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800" : "bg-muted border-border")}>
-                            <div className="text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 mb-1">✅ While SAFE ({t.threshold} not yet crossed)</div>
+                            <div className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 mb-1">✅ While SAFE ({t.threshold} not yet crossed)</div>
                             <div className="text-xs leading-relaxed">{t.whenSafe}</div>
                           </div>
                           <div className={cn("rounded-lg p-2.5 border", !t.ok ? "bg-red-50/80 border-red-200 dark:bg-red-950/20 dark:border-red-800" : "bg-muted border-border")}>
-                            <div className="text-[10px] font-bold uppercase tracking-wide text-red-600 dark:text-red-400 mb-1">🚨 Once BREACHED ({t.threshold} crossed)</div>
+                            <div className="text-xs font-bold uppercase tracking-wide text-red-600 dark:text-red-400 mb-1">🚨 Once BREACHED ({t.threshold} crossed)</div>
                             <div className="text-xs leading-relaxed">{t.whenBreached}</div>
                           </div>
                           {t.marketNote && (
                             <div className="rounded-lg bg-blue-50 border border-blue-200 px-2.5 py-2 dark:bg-blue-950/20 dark:border-blue-800">
-                              <div className="text-[10px] font-bold uppercase tracking-wide text-blue-600 dark:text-blue-400 mb-1">📍 {isUS ? "US" : "India"} specific</div>
+                              <div className="text-xs font-bold uppercase tracking-wide text-blue-600 dark:text-blue-400 mb-1">📍 {isUS ? "US" : "India"} specific</div>
                               <div className="text-xs leading-relaxed text-blue-800 dark:text-blue-200">{t.marketNote}</div>
                             </div>
                           )}
@@ -2792,7 +2794,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
         {/* ── PROTECT ── */}
         <TabsContent value="protect" className="space-y-3 mt-4">
           <Card className="p-4">
-            <div className="font-bold text-sm mb-3">🔒 Founder Control vs. Danger Zones</div>
+            <div className="font-semibold text-sm mb-3 text-foreground">Founder Control vs. Danger Zones</div>
             <div className="h-64">
               <ResponsiveContainer>
                 <LineChart data={protectData}>
@@ -2810,7 +2812,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
           </Card>
 
           <Card className="p-4">
-            <div className="font-bold text-sm mb-3">🚨 Anti-Takeover Scenarios</div>
+            <div className="font-semibold text-sm mb-3 text-foreground">Anti-Takeover Scenarios</div>
             {(() => {
               const items = [
                 {
@@ -2843,8 +2845,8 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   {items.map((it) => (
                     <div key={it.title} className="p-3 rounded-md border border-border">
                       <div className="flex items-center justify-between gap-3">
-                        <div className="font-bold text-sm">{it.title}</div>
-                        <Badge className={cn("text-[10px]", it.badge === "HIGH RISK" ? "bg-red-500/15 text-red-600 border border-red-500/30" : "bg-orange-500/15 text-orange-700 border border-orange-500/30")}>
+                        <div className="font-semibold text-sm text-foreground">{it.title}</div>
+                        <Badge className={cn("text-xs", it.badge === "HIGH RISK" ? "bg-red-500/15 text-red-600 border border-red-500/30" : "bg-orange-500/15 text-orange-700 border border-orange-500/30")}>
                           {it.badge}
                         </Badge>
                       </div>
@@ -2858,7 +2860,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
           </Card>
 
           <Card className="p-4">
-            <div className="font-bold text-sm mb-3">📜 Structural Protections Checklist</div>
+            <div className="font-semibold text-sm mb-3 text-foreground">Structural Protections Checklist</div>
             {(() => {
               const items = [
                 { title: "Dual-class structure in AoA", note: "DO BEFORE SEED", tone: "red", detail: "AoA amendments need 75% approval — hard for VCs to strip." },
@@ -2877,7 +2879,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                         <div className="text-sm font-bold">{it.title}</div>
                         <div className="text-xs text-muted-foreground mt-0.5">{it.detail}</div>
                       </div>
-                      <Badge className={cn("text-[10px] shrink-0", badgeCls(it.tone))}>{it.note}</Badge>
+                      <Badge className={cn("text-xs shrink-0", badgeCls(it.tone))}>{it.note}</Badge>
                     </div>
                   ))}
                 </div>
@@ -2891,8 +2893,8 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
           {/* Save UI */}
           <Card className="p-4">
             <div className="flex items-center justify-between mb-1">
-              <div className="font-bold text-sm">📊 Scenario Comparison</div>
-              <div className="text-[11px] text-muted-foreground">{savedScenarios.length}/3 saved</div>
+              <div className="font-semibold text-sm text-foreground">Scenario Comparison</div>
+              <div className="text-xs text-muted-foreground">{savedScenarios.length}/3 saved</div>
             </div>
             <p className="text-xs text-muted-foreground mb-3">
               Save your current setup as a named scenario, then tweak round terms and save again. Compare side-by-side to find the best deal structure for your founders.
@@ -3018,7 +3020,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
               <>
                 {/* Payout bar chart */}
                 <Card className="p-4">
-                  <div className="font-semibold text-sm mb-1">💰 Founder Take-Home by Exit Size</div>
+                  <div className="font-semibold text-sm mb-1">Founder Take-Home by Exit Size</div>
                   <p className="text-xs text-muted-foreground mb-4">
                     Lowest individual founder payout across scenarios — the floor, not the average.
                   </p>
@@ -3047,7 +3049,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                 {/* Delta summary row */}
                 {cols.length >= 2 && (
                   <Card className="p-4">
-                    <div className="font-semibold text-sm mb-3">📐 How Scenarios Differ from Current</div>
+                    <div className="font-semibold text-sm mb-3">How Scenarios Differ from Current</div>
                     <div className="space-y-2">
                       {savedScenarios.map((s) => {
                         const dEq    = (s.founderPct - founderPct).toFixed(1);
@@ -3078,11 +3080,11 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
 
                 {/* Comparison table */}
                 <Card className="p-4">
-                  <div className="font-semibold text-sm mb-3">📋 Side-by-Side Metrics</div>
+                  <div className="font-semibold text-sm mb-3">Side-by-Side Metrics</div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs border-collapse">
                       <thead>
-                        <tr className="border-b text-[10px] uppercase text-muted-foreground">
+                        <tr className="border-b text-xs uppercase text-muted-foreground">
                           <th className="text-left py-2 pr-3">Metric</th>
                           {cols.map((c, i) => (
                             <th
@@ -3103,7 +3105,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                           const worst = r.hib !== null ? (!r.hib ? maxOf(r.key) : minOf(r.key)) : -1;
                           return (
                             <tr key={r.label} className="border-b last:border-0 hover:bg-muted/30">
-                              <td className="py-2 pr-3 font-semibold whitespace-nowrap text-[11px]">{r.label}</td>
+                              <td className="py-2 pr-3 font-semibold whitespace-nowrap text-xs">{r.label}</td>
                               {cols.map((c, i) => {
                                 const val = Number(c[r.key]);
                                 return (
@@ -3123,12 +3125,12 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                           );
                         })}
                         <tr className="border-b last:border-0 hover:bg-muted/30">
-                          <td className="py-2 pr-3 font-semibold whitespace-nowrap text-[11px]">Board Control</td>
+                          <td className="py-2 pr-3 font-semibold whitespace-nowrap text-xs">Board Control</td>
                           {cols.map((c, i) => (
                             <td
                               key={c.name + "board"}
                               className={cn(
-                                "py-2 px-2 text-right text-[11px]",
+                                "py-2 px-2 text-right text-xs",
                                 c.boardStatus === "Founder-ctrl" ? "text-emerald-700 font-bold"
                                   : c.boardStatus === "Tied" ? "text-amber-700 font-bold"
                                   : "text-red-700 font-bold",
@@ -3142,7 +3144,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                       </tbody>
                     </table>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-4 text-[10px] text-muted-foreground">
+                  <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
                     <span><span className="text-emerald-600 font-bold">Green</span> = best value across scenarios</span>
                     <span><span className="text-red-600 font-bold">Red</span> = worst value</span>
                     <span><span className="text-primary font-bold">★ Current</span> = live (unsaved) scenario</span>
@@ -3159,8 +3161,8 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
           {/* Controls */}
           <Card className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <div className="font-bold text-sm">💰 Exit Waterfall Modeller</div>
-              <div className="text-[11px] text-muted-foreground">{isUS ? "Delaware waterfall" : "India SHA waterfall"}</div>
+              <div className="font-semibold text-sm text-foreground">Exit Waterfall Modeller</div>
+              <div className="text-xs text-muted-foreground">{isUS ? "Delaware waterfall" : "India SHA waterfall"}</div>
             </div>
             <p className="text-xs text-muted-foreground mb-3">
               Drag the slider to model any exit. Toggle preferences to see the real vs. naive payout split.
@@ -3192,7 +3194,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
               <Switch checked={state.usePref} disabled={readOnly} onCheckedChange={(v) => onChange({ ...state, usePref: v })} />
               <div>
                 <Label className="text-xs font-semibold">Apply liquidation preferences</Label>
-                <p className="text-[10px] text-muted-foreground">Off = naive pro-rata split. On = VCs paid first per SHA waterfall.</p>
+                <p className="text-xs text-muted-foreground">Off = naive pro-rata split. On = VCs paid first per SHA waterfall.</p>
               </div>
             </div>
             {state.exitValue <= totalPref && state.usePref && totalPref > 0 && (
@@ -3213,26 +3215,26 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             return (
               <div className="grid grid-cols-2 gap-3">
                 <Card className="p-3">
-                  <div className="text-[10px] uppercase text-muted-foreground font-semibold">Founders Take-Home</div>
+                  <div className="text-xs uppercase text-muted-foreground font-semibold">Founders Take-Home</div>
                   <div className="text-xl font-extrabold mt-1 text-primary">{fmtM(founderTotal)}</div>
-                  <div className="text-[10px] text-muted-foreground">at {fmtM(state.exitValue)} exit · {founderTotal > 0 ? ((founderTotal / state.exitValue) * 100).toFixed(0) + "% of proceeds" : "below pref floor"}</div>
+                  <div className="text-xs text-muted-foreground">at {fmtM(state.exitValue)} exit · {founderTotal > 0 ? ((founderTotal / state.exitValue) * 100).toFixed(0) + "% of proceeds" : "below pref floor"}</div>
                 </Card>
                 <Card className="p-3">
-                  <div className="text-[10px] uppercase text-muted-foreground font-semibold">VC Return</div>
+                  <div className="text-xs uppercase text-muted-foreground font-semibold">VC Return</div>
                   <div className="text-xl font-extrabold mt-1">{vcReturnMult}</div>
-                  <div className="text-[10px] text-muted-foreground">{fmtM(totalInvested)} invested · {fmtM(vcTotal)} returned</div>
+                  <div className="text-xs text-muted-foreground">{fmtM(totalInvested)} invested · {fmtM(vcTotal)} returned</div>
                 </Card>
                 <Card className="p-3">
-                  <div className="text-[10px] uppercase text-muted-foreground font-semibold">Pref Overhang</div>
+                  <div className="text-xs uppercase text-muted-foreground font-semibold">Pref Overhang</div>
                   <div className="text-xl font-extrabold mt-1">{fmtM(state.usePref ? totalPref : 0)}</div>
-                  <div className="text-[10px] text-muted-foreground">{state.usePref ? "paid before any founder dollar" : "preferences off"}</div>
+                  <div className="text-xs text-muted-foreground">{state.usePref ? "paid before any founder dollar" : "preferences off"}</div>
                 </Card>
                 <Card className="p-3">
-                  <div className="text-[10px] uppercase text-muted-foreground font-semibold">Pref Cost to Founders</div>
+                  <div className="text-xs uppercase text-muted-foreground font-semibold">Pref Cost to Founders</div>
                   <div className={cn("text-xl font-extrabold mt-1", prefCost > 0 ? "text-red-600" : "text-emerald-600")}>
                     {prefCost > 0 ? "-" : ""}{fmtM(prefCost)}
                   </div>
-                  <div className="text-[10px] text-muted-foreground">vs. no-preference scenario</div>
+                  <div className="text-xs text-muted-foreground">vs. no-preference scenario</div>
                 </Card>
               </div>
             );
@@ -3243,7 +3245,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             const presets = [25, 50, 100, 200, 500];
             return (
               <Card className="p-4">
-                <div className="font-semibold text-sm mb-1">📌 Exit Scenarios at a Glance</div>
+                <div className="font-semibold text-sm mb-1">Exit Scenarios at a Glance</div>
                 <p className="text-xs text-muted-foreground mb-3">Founder total and VC return multiple at five benchmark exit values. {state.usePref ? "Liquidation preferences applied." : "No preferences applied."}</p>
                 <div className="grid grid-cols-5 gap-2">
                   {presets.map((ev) => {
@@ -3263,13 +3265,13 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                           isCurrent ? "border-primary bg-primary/8" : "border-border hover:border-primary/40",
                         )}
                       >
-                        <div className={cn("text-[11px] font-bold", isCurrent ? "text-primary" : "text-foreground")}>${ev}M</div>
+                        <div className={cn("text-xs font-bold", isCurrent ? "text-primary" : "text-foreground")}>${ev}M</div>
                         <div className={cn("text-base font-extrabold mt-1", belowPref ? "text-red-500" : "text-foreground")}>
                           {belowPref ? "$0" : fmtM(fTot)}
                         </div>
-                        <div className="text-[9px] text-muted-foreground mt-0.5">founders</div>
-                        <div className="text-[10px] font-semibold text-muted-foreground mt-1">{mult}</div>
-                        <div className="text-[9px] text-muted-foreground">VC return</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">founders</div>
+                        <div className="text-xs font-semibold text-muted-foreground mt-1">{mult}</div>
+                        <div className="text-xs text-muted-foreground">VC return</div>
                       </button>
                     );
                   })}
@@ -3294,7 +3296,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
             });
             return (
               <Card className="p-4">
-                <div className="font-semibold text-sm mb-1">📈 Payout Curve</div>
+                <div className="font-semibold text-sm mb-1">Payout Curve</div>
                 <p className="text-xs text-muted-foreground mb-4">
                   How founder and VC payouts grow with exit size.
                   {state.usePref && totalPref > 0 && ` Founders receive $0 until exit exceeds the ${fmtM(totalPref)} preference stack.`}
@@ -3320,7 +3322,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   </ResponsiveContainer>
                 </div>
                 {state.usePref && totalPref > 0 && (
-                  <div className="mt-2 text-[10px] text-muted-foreground">Dashed blue = founders without preferences. Gap between solid and dashed = what VCs' liquidation preferences cost you.</div>
+                  <div className="mt-2 text-xs text-muted-foreground">Dashed blue = founders without preferences. Gap between solid and dashed = what VCs' liquidation preferences cost you.</div>
                 )}
               </Card>
             );
@@ -3328,10 +3330,10 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
 
           {/* Individual payouts */}
           <Card className="p-4">
-            <div className="font-semibold text-sm mb-3">🧾 Individual Payouts at {fmtM(state.exitValue)}</div>
+            <div className="font-semibold text-sm mb-3">Individual Payouts at {fmtM(state.exitValue)}</div>
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b text-[10px] uppercase text-muted-foreground">
+                <tr className="border-b text-xs uppercase text-muted-foreground">
                   <th className="text-left py-1.5 pr-2">Name</th>
                   <th className="text-left py-1.5 pr-2">Role</th>
                   <th className="text-right py-1.5 pr-2">Equity</th>
@@ -3352,7 +3354,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                       <td className="py-2 text-right font-bold">{fmtM(f.payout)}</td>
                       {state.vestingEnabled && (
                         <td className="py-2 pl-2 text-right">
-                          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold"
+                          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold"
                             style={{ backgroundColor: accelerated ? "#dcfce7" : vestedPct < 50 ? "#fee2e2" : "#fef9c3", color: accelerated ? "#16a34a" : vestedPct < 50 ? "#dc2626" : "#92400e" }}>
                             {accelerated ? "⚡ Accel." : `${vestedPct}%`}
                           </span>
@@ -3369,7 +3371,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   return (
                     <tr key={h.name} className="border-b last:border-0 bg-muted/20">
                       <td className="py-2 pr-2 font-semibold text-muted-foreground">{h.name}</td>
-                      <td className="py-2 pr-2 text-muted-foreground text-[10px]">Investor</td>
+                      <td className="py-2 pr-2 text-muted-foreground text-xs">Investor</td>
                       <td className="py-2 pr-2 text-right text-muted-foreground">{h.pct.toFixed(1)}%</td>
                       <td className="py-2 text-right font-bold text-muted-foreground">{fmtM(payout)}</td>
                       {state.vestingEnabled && <td className="py-2 pl-2 text-right text-muted-foreground">{mult}</td>}
@@ -3383,11 +3385,11 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
           {/* Per-round VC return breakdown */}
           {latest.roundData.filter((r) => r.type === "vc").length > 0 && (
             <Card className="p-4">
-              <div className="font-semibold text-sm mb-3">📊 VC Round Returns at {fmtM(state.exitValue)}</div>
+              <div className="font-semibold text-sm mb-3">VC Round Returns at {fmtM(state.exitValue)}</div>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b text-[10px] uppercase text-muted-foreground">
+                    <tr className="border-b text-xs uppercase text-muted-foreground">
                       <th className="text-left py-1.5 pr-3">Investor</th>
                       <th className="text-right py-1.5 px-2">Invested</th>
                       <th className="text-right py-1.5 px-2">Pref (1st dollar)</th>
@@ -3417,7 +3419,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   </tbody>
                 </table>
               </div>
-              <div className="mt-2 text-[10px] text-muted-foreground">
+              <div className="mt-2 text-xs text-muted-foreground">
                 {isUS ? "Return = payout ÷ investment. VCs targeting 3× fund-level returns need individual deals at 5–10×." : "Return = payout ÷ investment. India VCs typically target 5–8× on individual investments to hit 3× fund-level returns."}
               </div>
             </Card>
@@ -3426,7 +3428,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
           {/* Redemption Risk Timeline */}
           {hasRedemption && (
             <Card className="p-4">
-              <div className="font-semibold text-sm mb-1">⏰ Redemption Risk Timeline</div>
+              <div className="font-semibold text-sm mb-1">Redemption Risk Timeline</div>
               <p className="text-xs text-muted-foreground mb-3">
                 Investors with redemption rights can force the company to buy back their shares after the trigger period — regardless of exit readiness.
               </p>
@@ -3435,30 +3437,30 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   <div key={item.roundKey} className="flex items-center justify-between p-2.5 rounded-md border border-orange-300/60 bg-orange-50/50 dark:bg-orange-950/20">
                     <div>
                       <div className="text-xs font-semibold">{item.label} VC</div>
-                      <div className="text-[10px] text-muted-foreground">Triggers {item.years} years post-close · {item.mult}× cost</div>
+                      <div className="text-xs text-muted-foreground">Triggers {item.years} years post-close · {item.mult}× cost</div>
                     </div>
                     <div className="text-right">
                       <div className="text-sm font-bold text-orange-700 dark:text-orange-400">{fmtM(item.liability)}</div>
-                      <div className="text-[9px] text-muted-foreground">cash demand</div>
+                      <div className="text-xs text-muted-foreground">cash demand</div>
                     </div>
                   </div>
                 ))}
               </div>
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <div className="p-2.5 rounded-md bg-muted/60">
-                  <div className="text-[10px] uppercase text-muted-foreground font-semibold">Total Cash Demand</div>
+                  <div className="text-xs uppercase text-muted-foreground font-semibold">Total Cash Demand</div>
                   <div className="text-lg font-extrabold text-orange-700 dark:text-orange-400">{fmtM(totalRedemptionLiability)}</div>
-                  <div className="text-[10px] text-muted-foreground">if all redemptions triggered</div>
+                  <div className="text-xs text-muted-foreground">if all redemptions triggered</div>
                 </div>
                 <div className="p-2.5 rounded-md bg-muted/60">
-                  <div className="text-[10px] uppercase text-muted-foreground font-semibold">vs. Modelled Exit</div>
+                  <div className="text-xs uppercase text-muted-foreground font-semibold">vs. Modelled Exit</div>
                   <div className={cn("text-lg font-extrabold", totalRedemptionLiability > state.exitValue * 0.5 ? "text-red-600" : "text-foreground")}>
                     {state.exitValue > 0 ? ((totalRedemptionLiability / state.exitValue) * 100).toFixed(0) + "% of exit" : "—"}
                   </div>
-                  <div className="text-[10px] text-muted-foreground">at {fmtM(state.exitValue)}</div>
+                  <div className="text-xs text-muted-foreground">at {fmtM(state.exitValue)}</div>
                 </div>
               </div>
-              <div className="p-2.5 rounded-md bg-orange-500/8 border border-orange-500/20 text-[10px] text-orange-900 dark:text-orange-300 space-y-1">
+              <div className="p-2.5 rounded-md bg-orange-500/8 border border-orange-500/20 text-xs text-orange-900 dark:text-orange-300 space-y-1">
                 <div className="font-semibold">Negotiation lever:</div>
                 <div>
                   {isUS
@@ -3497,7 +3499,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                 }}
               >
                 <span className="text-lg leading-none">{tab.emoji}</span>
-                <span className="text-[9px] font-medium tracking-tight whitespace-nowrap">{tab.label}</span>
+                <span className="text-xs font-medium tracking-tight whitespace-nowrap">{tab.label}</span>
               </button>
             );
           })}
@@ -3509,7 +3511,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
         <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setShowExport(false)}>
           <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl bg-background border shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b">
-              <div className="font-bold text-sm">📤 Export Report</div>
+              <div className="font-semibold text-sm text-foreground">Export Report</div>
               <button onClick={() => setShowExport(false)} className="text-muted-foreground hover:text-foreground text-lg font-bold leading-none">×</button>
             </div>
             <div className="p-5 space-y-4">
@@ -3520,25 +3522,25 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                     <div className="font-bold text-base" style={{ color: "oklch(0.22 0.04 265)" }}>{state.companyName || "Your Company"}</div>
                     <div className="text-xs text-muted-foreground mt-0.5">Equity Scenario Report · {new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</div>
                   </div>
-                  <div className="text-[10px] font-semibold px-2 py-1 rounded-full" style={{ background: "oklch(0.22 0.04 265)", color: "white" }}>
+                  <div className="text-xs font-semibold px-2 py-1 rounded-full" style={{ background: "oklch(0.22 0.04 265)", color: "white" }}>
                     {isUS ? "🇺🇸 US" : "🇮🇳 India"}
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2 pt-1">
                   <div className="rounded-lg bg-white border p-2 text-center">
                     <div className="text-lg font-extrabold" style={{ color: "oklch(0.22 0.04 265)" }}>{founderPct.toFixed(1)}%</div>
-                    <div className="text-[10px] text-muted-foreground">Founder equity</div>
+                    <div className="text-xs text-muted-foreground">Founder equity</div>
                   </div>
                   <div className="rounded-lg bg-white border p-2 text-center">
                     <div className="text-lg font-extrabold" style={{ color: "oklch(0.22 0.04 265)" }}>{fmtM(perFounderAmt)}</div>
-                    <div className="text-[10px] text-muted-foreground">Per founder @exit</div>
+                    <div className="text-xs text-muted-foreground">Per founder @exit</div>
                   </div>
                   <div className="rounded-lg bg-white border p-2 text-center">
                     <div className="text-lg font-extrabold" style={{ color: "oklch(0.22 0.04 265)" }}>{roundsEnabledCount}</div>
-                    <div className="text-[10px] text-muted-foreground">Rounds modelled</div>
+                    <div className="text-xs text-muted-foreground">Rounds modelled</div>
                   </div>
                 </div>
-                <div className="text-[10px] text-muted-foreground">Includes: cap table · round terms · exit waterfall · playbook actions</div>
+                <div className="text-xs text-muted-foreground">Includes: cap table · round terms · exit waterfall · playbook actions</div>
               </div>
 
               <div className="flex gap-2">
@@ -3670,7 +3672,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   📄 Open PDF Report
                 </button>
               </div>
-              <p className="text-[10px] text-muted-foreground text-center">Opens in a new tab · Print → Save as PDF</p>
+              <p className="text-xs text-muted-foreground text-center">Opens in a new tab · Print → Save as PDF</p>
             </div>
           </div>
         </div>
