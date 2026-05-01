@@ -729,27 +729,27 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
     <div className="simulator-content space-y-4 pb-6 md:pb-6">
       {/* Summary Pills */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="p-4 md:col-span-2 lg:col-span-1" style={{ background: "oklch(0.22 0.04 265)" }}>
-          <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.5)" }}>Founders Combined</div>
-          <div className="text-5xl font-extrabold mt-1 tracking-tight text-white">{founderPct.toFixed(1)}%</div>
-          <div className="text-xs mt-1 font-medium" style={{ color: founderPct > 51 ? "oklch(0.76 0.18 150)" : founderPct > 35 ? "oklch(0.85 0.18 75)" : "oklch(0.75 0.2 25)" }}>
+        <Card className="hero-pill p-4 md:col-span-2 lg:col-span-1" style={{ background: "oklch(0.22 0.04 265)" }}>
+          <div className="hero-pill-label">Founders Combined</div>
+          <div className="hero-pill-number">{founderPct.toFixed(1)}%</div>
+          <div className="hero-pill-status" style={{ color: founderPct > 51 ? "oklch(0.76 0.18 150)" : founderPct > 35 ? "oklch(0.85 0.18 75)" : "oklch(0.75 0.2 25)" }}>
             {founderPct > 51 ? "Majority — you have control" : founderPct > 35 ? "Caution — watch dilution" : "Minority position"}
           </div>
         </Card>
-        <Card className="p-3">
-          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Post-money Val.</div>
-          <div className="text-xl font-bold mt-1 text-foreground">{fmtVal(latest.valuation)}</div>
-          <div className="text-xs text-muted-foreground">{latest.valuation ? latest.label : "Configure rounds"}</div>
+        <Card className="stat-pill p-4 flex flex-col items-center justify-center text-center">
+          <div className="stat-pill-label">Post-money Val.</div>
+          <div className="stat-pill-number">{fmtVal(latest.valuation)}</div>
+          <div className="stat-pill-sub">{latest.valuation ? latest.label : "Configure rounds"}</div>
         </Card>
-        <Card className="p-3">
-          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Board Control</div>
-          <div className="text-xl font-bold mt-1 text-foreground">{latest.vcSeats === 0 ? "✅ Safe" : latest.vcSeats < founderSeats ? "✅ Safe" : latest.vcSeats === founderSeats ? "⚠️ Tied" : "🚨 Lost"}</div>
-          <div className="text-xs text-muted-foreground">F:{fSeatPct}% V:{vSeatPct}% I:{iSeatPct}%</div>
+        <Card className="stat-pill p-4 flex flex-col items-center justify-center text-center">
+          <div className="stat-pill-label">Board Control</div>
+          <div className="stat-pill-number">{latest.vcSeats === 0 ? "Safe" : latest.vcSeats < founderSeats ? "Safe" : latest.vcSeats === founderSeats ? "Tied" : "Lost"}</div>
+          <div className="stat-pill-sub">F:{fSeatPct}% · V:{vSeatPct}% · I:{iSeatPct}%</div>
         </Card>
-        <Card className="p-3">
-          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total Investor Stake</div>
-          <div className="text-xl font-bold mt-1 text-foreground">{vcPct.toFixed(1)}%</div>
-          <div className="text-xs text-muted-foreground">
+        <Card className="stat-pill p-4 flex flex-col items-center justify-center text-center">
+          <div className="stat-pill-label">Investor Stake</div>
+          <div className="stat-pill-number">{vcPct.toFixed(1)}%</div>
+          <div className="stat-pill-sub">
             {(() => {
               const names = [...latest.vcNames];
               if (latest.holders.some((h) => h.type === "safe")) names.unshift("SAFE");
