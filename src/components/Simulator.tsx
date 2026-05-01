@@ -368,6 +368,14 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
       });
     }
 
+    // India: flip structure warning
+    if (!isUS && anyRoundsEnabled) {
+      signals.push({
+        tone: "amber",
+        text: "US flip structure required before US VC closes: Indian residents cannot directly own a Delaware C-Corp under RBI / FEMA rules. You need: LLP → Delaware C-Corp → India Pvt Ltd. Start 3–4 months before signing. See the Flip Structure card in the Setup tab.",
+      });
+    }
+
     // India: angel tax risk
     if (!isUS && state.safe.enabled && state.safe.amount > 0) {
       signals.push({
@@ -600,6 +608,18 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
       }
     } else {
       // ── India-specific ───────────────────────────────────────────────────
+      // Flip structure — highest priority for India founders raising from US VCs
+      if (anyRoundsEnabled) {
+        recs.push({
+          id: "india-flip",
+          priority: "critical",
+          timing: "do-now",
+          action: "Initiate India → US entity flip structure before approaching US VCs",
+          why: "Indian residents cannot directly own a Delaware C-Corp under FEMA / RBI regulations. US VCs will require a Delaware C-Corp before closing. Structure: LLP (India founders) → Delaware C-Corp → India Pvt Ltd subsidiary. Missing this means 3–6 month delays after a term sheet, which kills most deals.",
+          nextStep: "Engage a CA/law firm experienced in FEMA/ODI filings. Steps in order: (1) Form LLP — ₹15K, 10 days; (2) LLP incorporates Delaware C-Corp — $600, 5 days; (3) file Form ODI with RBI via AD bank within 30 days; (4) Delaware C-Corp incorporates India Pvt Ltd subsidiary — ₹50K, 20 days; (5) founders swap LLP interest for Delaware shares at SEBI-registered FMV. Total cost: ₹3–8L, total timeline: 3–4 months. Do not sign a US term sheet before the Delaware entity exists.",
+          leverage: "Come to the first VC meeting with the Delaware entity already incorporated. It signals seriousness and removes the single biggest closing risk. VCs who have been burned by post-term-sheet flip delays often pass on Indian teams that haven't done this.",
+        });
+      }
       recs.push({
         priority: "high",
         timing: "now",
@@ -984,6 +1004,61 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
               );
             })()}
           </Card>
+
+          {/* India Entity Structure Card */}
+          {!isUS && (
+            <Card className="p-4 border-l-4" style={{ borderLeftColor: "oklch(0.76 0.15 285)" }}>
+              <div className="font-bold text-sm mb-1">🏗️ India → US Flip Structure</div>
+              <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+                Indian residents cannot directly own a US entity (Delaware C-Corp) under RBI / FEMA regulations.
+                The required structure before raising from US VCs:
+              </p>
+              <div className="space-y-2 mb-3">
+                {[
+                  {
+                    step: "1",
+                    title: "Form an LLP in India",
+                    detail: "All Indian resident founders register a Limited Liability Partnership. The LLP becomes the vehicle for outward remittance. Cost: ₹5,000–₹15,000. Timeline: 7–10 days.",
+                    critical: true,
+                  },
+                  {
+                    step: "2",
+                    title: "LLP incorporates Delaware C-Corp",
+                    detail: "The LLP (not individual founders) incorporates a Delaware C-Corp and holds 100% of shares initially. File Form ODI with RBI via your AD bank within 30 days of remittance. Cost: $500 legal + $90 state fee. Timeline: 3–5 days.",
+                    critical: true,
+                  },
+                  {
+                    step: "3",
+                    title: "Delaware C-Corp creates India Pvt Ltd subsidiary",
+                    detail: "The Delaware entity incorporates a wholly-owned Indian Private Limited company for India operations — employees, contracts, and India revenue sit here. The IP and cap table live in Delaware. Requires RBI FIPB-exempt automatic route or SIA approval. Cost: ₹20,000–₹50,000. Timeline: 15–20 days.",
+                    critical: true,
+                  },
+                  {
+                    step: "4",
+                    title: "Founders swap LLP stakes → Delaware shares",
+                    detail: "Founders receive shares in the Delaware C-Corp in exchange for their LLP interest. The exchange ratio must be at FMV. After this step, individual founders own Delaware shares and the LLP can be wound down. Get a SEBI-registered valuer's report for the swap.",
+                    critical: false,
+                  },
+                ].map((s) => (
+                  <div key={s.step} className={`rounded-md border p-2.5 ${s.critical ? "border-amber-200 bg-amber-50/50" : "border-border bg-muted/10"}`}>
+                    <div className="flex gap-2.5 items-start">
+                      <div className="flex-shrink-0 h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{ background: "oklch(0.22 0.04 265)" }}>{s.step}</div>
+                      <div>
+                        <div className="text-xs font-semibold">{s.title}</div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">{s.detail}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="rounded-md bg-muted/40 px-3 py-2 text-[10px] text-muted-foreground leading-relaxed">
+                <span className="font-semibold text-foreground">Key regulations:</span> FEMA 1999 · RBI Master Direction on ODI (2022) · Companies Act 2013 (Section 2(87) subsidiary definition) · Income Tax Act Section 9 (deemed income for IP held abroad). Start this process <span className="font-semibold text-foreground">3–4 months before</span> you need to sign a US term sheet. Do not sign a term sheet before the Delaware entity exists — restructuring post-investment is extremely expensive (₹15–40L in legal/CA fees).
+              </div>
+              <div className="mt-2.5 rounded-md border border-blue-200 bg-blue-50/50 px-3 py-2 text-[10px] leading-relaxed">
+                <span className="font-semibold">Transfer pricing:</span> All transactions between the India Pvt Ltd and the Delaware parent (software licences, management fees, shared services) must be at arm's length under Section 92 of the Income Tax Act. Document these with a Transfer Pricing study. Undocumented intra-group charges are the #1 India tax audit trigger for VC-backed startups.
+              </div>
+            </Card>
+          )}
 
           {/* Pre-funding Cap Table Editor */}
           <Card className="p-4">

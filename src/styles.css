@@ -230,3 +230,61 @@
 .tab-hint-animate {
   animation: tab-hint-scroll 0.6s ease-out 1s both;
 }
+
+/* ── Simulator card depth ──────────────────────────────────── */
+.card, [class*="rounded"][class*="border"] {
+  box-shadow: var(--shadow-card);
+}
+
+/* Colored left-border accent for signal/alert cards */
+.signal-red    { border-left: 3px solid oklch(0.6 0.22 25) !important; }
+.signal-amber  { border-left: 3px solid oklch(0.75 0.16 75) !important; }
+.signal-green  { border-left: 3px solid oklch(0.62 0.16 150) !important; }
+.signal-blue   { border-left: 3px solid oklch(0.76 0.15 285) !important; }
+
+/* Tab bar — navy background, lavender active */
+[role="tablist"] {
+  background: oklch(0.22 0.04 265) !important;
+  border-radius: 0.75rem !important;
+  padding: 4px !important;
+}
+
+[role="tab"] {
+  color: rgba(255,255,255,0.55) !important;
+  font-weight: 500 !important;
+  font-size: 0.75rem !important;
+  border-radius: 0.5rem !important;
+  transition: all 0.15s ease !important;
+}
+
+[role="tab"]:hover:not([data-state="active"]) {
+  color: rgba(255,255,255,0.85) !important;
+  background: rgba(255,255,255,0.08) !important;
+}
+
+[role="tab"][data-state="active"] {
+  background: oklch(0.76 0.15 285) !important;
+  color: oklch(0.22 0.04 265) !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 4px oklch(0.76 0.15 285 / 0.4) !important;
+}
+
+/* Stat number cards — subtle lavender tint */
+.stat-card {
+  background: linear-gradient(135deg, oklch(0.975 0.008 285), white);
+  border-color: oklch(0.76 0.15 285 / 0.2);
+}
+
+/* Input focus ring — lavender */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  ring-color: oklch(0.76 0.15 285);
+  border-color: oklch(0.76 0.15 285 / 0.6) !important;
+  box-shadow: 0 0 0 3px oklch(0.76 0.15 285 / 0.15) !important;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: oklch(0.22 0.04 265 / 0.15); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: oklch(0.22 0.04 265 / 0.3); }
