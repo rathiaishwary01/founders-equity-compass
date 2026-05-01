@@ -821,6 +821,19 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
         {/* ── SETUP ── */}
         <TabsContent value="setup" className="space-y-3 mt-4">
 
+          {/* Company Name */}
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Company name</label>
+            <input
+              type="text"
+              placeholder="e.g. Acme Inc."
+              value={state.companyName ?? ""}
+              readOnly={readOnly}
+              onChange={(e) => onChange({ ...state, companyName: e.target.value })}
+              className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
+
           {/* Founder Structure Selector */}
           <div className="space-y-2">
             <div className="text-sm font-semibold" style={{ color: "oklch(0.22 0.04 265)" }}>Where are you based and what entity are you building?</div>
@@ -990,10 +1003,15 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
 
           {/* Day 0 Legal Checklist */}
           <Card className="p-4">
-            <div className="font-bold text-sm mb-1">📋 Day 0 Legal Checklist</div>
-            <p className="text-xs text-muted-foreground mb-3">
-              These are non-negotiable before taking any VC money. Each item costs less than one lawyer hour to set up; skipping any creates a deal-blocker at due diligence.
-            </p>
+            <Accordion type="single" collapsible>
+              <AccordionItem value="day0" className="border-0">
+                <AccordionTrigger className="py-0 hover:no-underline">
+                  <div className="font-bold text-sm">📋 Day 0 Legal Checklist</div>
+                </AccordionTrigger>
+                <AccordionContent className="pt-3">
+                <p className="text-xs text-muted-foreground mb-3">
+                  These are non-negotiable before taking any VC money. Each item costs less than one lawyer hour to set up; skipping any creates a deal-blocker at due diligence.
+                </p>
             {(() => {
               type CheckItem = { id: string; label: string; detail: string; critical: boolean; market?: "both" | "india" | "us" };
               const items: CheckItem[] = ([
@@ -1064,6 +1082,9 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                 </div>
               );
             })()}
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </Card>
 
           {/* India Entity Structure Card — only for india-flip */}
@@ -1524,7 +1545,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                               : "bg-emerald-400";
                   return (
                     <div key={i} className="flex items-start gap-2 text-xs text-white/90">
-                      <span className={cn("mt-1 h-2.5 w-2.5 rounded-full", dotCls)} />
+                      <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", dotCls)} />
                       <span>{s.text}</span>
                     </div>
                   );
@@ -2076,7 +2097,7 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
                   <div className="text-[10px] text-muted-foreground">≥{twoSeatThreshold}% = 2 seats · ≥{oneSeatThreshold}% = 1 seat · below = 0</div>
                 </div>
                 <p className="text-xs text-muted-foreground mb-4">How many founder director seats you can defend at each stage, based on collective equity vs. your SHA thresholds.</p>
-                <div className="flex items-end gap-4 flex-wrap">
+                <div className="flex items-end gap-3 overflow-x-auto pb-1 scrollbar-none">
                   {snapKeys.map((k) => {
                     const snap = snaps[k];
                     const fEq = snap.holders.filter((h) => h.type === "founder").reduce((s, h) => s + h.pct, 0);
@@ -3488,77 +3509,168 @@ export function Simulator({ state, onChange, readOnly = false }: Props) {
         <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setShowExport(false)}>
           <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl bg-background border shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b">
-              <div className="font-bold text-sm">📤 Export Scenario</div>
+              <div className="font-bold text-sm">📤 Export Report</div>
               <button onClick={() => setShowExport(false)} className="text-muted-foreground hover:text-foreground text-lg font-bold leading-none">×</button>
             </div>
             <div className="p-5 space-y-4">
-              {(() => {
-                const lines: string[] = [];
-                lines.push(`EquiCompass — ${new Date().toLocaleDateString()} | ${isUS ? "United States" : "India"}`);
-                lines.push("");
-                lines.push("PRE-FUNDING CAP TABLE");
-                founders.forEach((h) => lines.push(`  ${h.name} (${h.role}): ${h.pct.toFixed(1)}%`));
-                if (anyRoundsEnabled) {
-                  lines.push("");
-                  lines.push("ROUNDS");
-                  enabledRounds.forEach((k) => {
-                    const r = state.rounds[k];
-                    const parts = [`$${r.raise}M raise @ $${r.preMoney}M pre`];
-                    if (r.esop > 0) parts.push(`ESOP ${r.esop}%`);
-                    parts.push(`pref ${r.prefMult}× ${r.prefType === "part" ? "part." : "non-part."}`);
-                    parts.push(`anti-dil: ${r.antiDilution}`);
-                    if (r.payToPlay) parts.push("P2P ✓");
-                    if (r.redemptionEnabled) parts.push(`redemption ${r.redemptionYears ?? 5}yr ${r.redemptionMultiple ?? 1}×`);
-                    lines.push(`  ${ROUND_LABELS[k as RoundKey]}: ${parts.join(" · ")}`);
-                  });
-                  lines.push("");
-                  lines.push("POST-FUNDING CAP TABLE");
-                  latest.holders.forEach((h) => lines.push(`  ${h.name}: ${h.pct.toFixed(1)}%`));
-                  lines.push("");
-                  lines.push("EXIT ANALYSIS");
-                  lines.push(`  Exit modelled: ${fmtM(state.exitValue)}`);
-                  lines.push(`  Founder take-home: ${fmtM(founderTotal)}${founderTotal > 0 ? ` (${((founderTotal / state.exitValue) * 100).toFixed(0)}% of proceeds)` : " (below pref floor)"}`);
-                  lines.push(`  VC return: ${totalInvested > 0 ? (vcTotal / totalInvested).toFixed(1) + "×" : "—"} on ${fmtM(totalInvested)} invested`);
-                  lines.push(`  Liquidation overhang: ${fmtM(totalPref)}`);
-                  if (hasRedemption) lines.push(`  Redemption liability: ${fmtM(totalRedemptionLiability)}`);
-                }
-                if (state.safe.enabled) {
-                  lines.push("");
-                  lines.push("SAFE");
-                  lines.push(`  ${fmtM(state.safe.amount)} · ${state.safe.mfn ? "MFN / no cap" : `cap $${state.safe.cap}M · ${state.safe.discount}% discount`}`);
-                }
-                lines.push("");
-                lines.push("PLAYBOOK ACTIONS");
-                recommendations.forEach((r) => lines.push(`  [${r.priority.toUpperCase()} · ${r.timing}] ${r.action}`));
-                return (
-                  <pre className="text-[10px] text-muted-foreground bg-muted/50 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap leading-relaxed font-mono">
-                    {lines.join("\n")}
-                  </pre>
-                );
-              })()}
+              {/* Preview card */}
+              <div className="rounded-xl border bg-muted/30 p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-bold text-base" style={{ color: "oklch(0.22 0.04 265)" }}>{state.companyName || "Your Company"}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Equity Scenario Report · {new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</div>
+                  </div>
+                  <div className="text-[10px] font-semibold px-2 py-1 rounded-full" style={{ background: "oklch(0.22 0.04 265)", color: "white" }}>
+                    {isUS ? "🇺🇸 US" : "🇮🇳 India"}
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2 pt-1">
+                  <div className="rounded-lg bg-white border p-2 text-center">
+                    <div className="text-lg font-extrabold" style={{ color: "oklch(0.22 0.04 265)" }}>{founderPct.toFixed(1)}%</div>
+                    <div className="text-[10px] text-muted-foreground">Founder equity</div>
+                  </div>
+                  <div className="rounded-lg bg-white border p-2 text-center">
+                    <div className="text-lg font-extrabold" style={{ color: "oklch(0.22 0.04 265)" }}>{fmtM(perFounderAmt)}</div>
+                    <div className="text-[10px] text-muted-foreground">Per founder @exit</div>
+                  </div>
+                  <div className="rounded-lg bg-white border p-2 text-center">
+                    <div className="text-lg font-extrabold" style={{ color: "oklch(0.22 0.04 265)" }}>{roundsEnabledCount}</div>
+                    <div className="text-[10px] text-muted-foreground">Rounds modelled</div>
+                  </div>
+                </div>
+                <div className="text-[10px] text-muted-foreground">Includes: cap table · round terms · exit waterfall · playbook actions</div>
+              </div>
+
               <div className="flex gap-2">
                 <button
-                  id="copy-export-btn"
                   onClick={() => {
-                    const pre = document.querySelector("#export-modal pre");
-                    const text = pre ? pre.textContent || "" : "";
-                    navigator.clipboard.writeText(text).then(() => {
-                      const btn = document.getElementById("copy-export-btn");
-                      if (btn) { btn.textContent = "✅ Copied!"; setTimeout(() => { if(btn) btn.textContent = "📋 Copy"; }, 2000); }
-                    });
+                    const co = state.companyName || "YourCompany";
+                    const dateStr = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+                    const holderColors: Record<string, string> = {
+                      founder: "#4361ee", esop: "#4cc9f0", advisory: "#90be6d", vc: "#e17055", safe: "#f59e0b"
+                    };
+                    const navyHex = "#1e2235";
+
+                    let capRows = founders.map(h =>
+                      `<tr><td>${h.name}</td><td style="color:#666">${h.role}</td><td style="text-align:right;font-weight:700">${h.pct.toFixed(1)}%</td><td style="text-align:right"><div style="height:6px;background:#4361ee;border-radius:3px;width:${Math.max(4, h.pct * 2)}px;margin-left:auto"></div></td></tr>`
+                    ).join("");
+
+                    let roundRows = enabledRounds.map(k => {
+                      const r = state.rounds[k as RoundKey];
+                      const snap = snaps[k];
+                      const vcHolder = snap?.holders.find(h => h.type === "vc");
+                      const dilPct = vcHolder ? vcHolder.pct.toFixed(1) + "%" : "—";
+                      return `<tr>
+                        <td style="font-weight:600">${ROUND_LABELS[k as RoundKey]}</td>
+                        <td>$${r.raise}M @ $${r.preMoney}M pre</td>
+                        <td style="text-align:right">${dilPct} VC stake</td>
+                        <td style="text-align:right">${r.prefMult}× ${r.prefType === "part" ? "part." : "non-part."}</td>
+                        <td style="text-align:right;color:${r.antiDilution === "full-ratchet" ? "#e74c3c" : "#27ae60"}">${r.antiDilution}</td>
+                      </tr>`;
+                    }).join("");
+
+                    let postRows = anyRoundsEnabled ? latest.holders.map(h =>
+                      `<tr><td>${h.name}</td><td style="text-align:right;font-weight:700">${h.pct.toFixed(1)}%</td><td><div style="height:8px;background:${holderColors[h.type] || "#999"};border-radius:4px;width:${Math.max(4, h.pct * 3)}px"></div></td></tr>`
+                    ).join("") : "";
+
+                    let playbookRows = recommendations.map(r => {
+                      const bg = r.priority === "critical" ? "#fff5f5" : r.priority === "high" ? "#fffbeb" : "#f0fdf4";
+                      const border = r.priority === "critical" ? "#e74c3c" : r.priority === "high" ? "#f59e0b" : "#27ae60";
+                      return `<div style="border-left:3px solid ${border};background:${bg};border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:8px">
+                        <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+                          <span style="font-size:10px;font-weight:700;text-transform:uppercase;color:${border}">${r.priority}</span>
+                          <span style="font-size:10px;color:#888">· ${r.timing}</span>
+                        </div>
+                        <div style="font-weight:600;font-size:12px;margin-bottom:4px">${r.action}</div>
+                        <div style="font-size:11px;color:#555;line-height:1.5">${r.why}</div>
+                        <div style="font-size:11px;color:#333;margin-top:6px"><strong>Next step:</strong> ${r.nextStep}</div>
+                      </div>`;
+                    }).join("");
+
+                    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+                      <title>${co} — EquiCompass Report</title>
+                      <style>
+                        * { box-sizing: border-box; margin: 0; padding: 0; }
+                        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1a1a2e; background: #fff; padding: 32px; }
+                        @media print { body { padding: 0; } .no-print { display: none; } }
+                        .cover { background: linear-gradient(135deg, ${navyHex} 0%, #2d3561 100%); color: white; border-radius: 12px; padding: 32px; margin-bottom: 24px; }
+                        .cover h1 { font-size: 28px; font-weight: 800; }
+                        .cover .sub { font-size: 13px; opacity: 0.65; margin-top: 4px; }
+                        .cover .pills { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+                        .cover .pill { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 600; }
+                        .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 24px; }
+                        .stat { background: #f8f9ff; border: 1px solid #e8ecff; border-radius: 10px; padding: 16px; text-align: center; }
+                        .stat .val { font-size: 26px; font-weight: 800; color: ${navyHex}; }
+                        .stat .lbl { font-size: 11px; color: #888; margin-top: 2px; }
+                        h2 { font-size: 15px; font-weight: 700; color: ${navyHex}; margin: 20px 0 10px; padding-bottom: 6px; border-bottom: 2px solid #eef0ff; }
+                        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+                        th { text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; color: #888; padding: 6px 8px; border-bottom: 1px solid #eee; }
+                        td { padding: 7px 8px; border-bottom: 1px solid #f4f4f4; }
+                        tr:last-child td { border-bottom: none; }
+                        .badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+                        .footer { margin-top: 32px; font-size: 10px; color: #aaa; text-align: center; border-top: 1px solid #eee; padding-top: 12px; }
+                        .section { background: #fafbff; border: 1px solid #e8ecff; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+                      </style></head><body>
+                      <div class="cover">
+                        <h1>${co}</h1>
+                        <div class="sub">EquiCompass Equity Scenario Report · ${dateStr}</div>
+                        <div class="pills">
+                          <span class="pill">${isUS ? "🇺🇸 United States" : "🇮🇳 India"}</span>
+                          ${anyRoundsEnabled ? `<span class="pill">${roundsEnabledCount} round${roundsEnabledCount === 1 ? "" : "s"} modelled</span>` : ""}
+                          ${state.safe.enabled ? '<span class="pill">SAFE included</span>' : ""}
+                          <span class="pill">Exit @ ${fmtM(state.exitValue)}</span>
+                        </div>
+                      </div>
+                      <div class="stats">
+                        <div class="stat"><div class="val">${founderPct.toFixed(1)}%</div><div class="lbl">Founder equity (post-funding)</div></div>
+                        <div class="stat"><div class="val">${fmtM(perFounderAmt)}</div><div class="lbl">Per-founder take-home @ exit</div></div>
+                        <div class="stat"><div class="val">${totalInvested > 0 ? (vcTotal / totalInvested).toFixed(1) + "×" : "—"}</div><div class="lbl">VC return multiple</div></div>
+                      </div>
+                      <div class="section">
+                        <h2>Pre-funding Cap Table</h2>
+                        <table><thead><tr><th>Name</th><th>Role</th><th style="text-align:right">Equity</th><th></th></tr></thead>
+                        <tbody>${capRows}</tbody></table>
+                      </div>
+                      ${anyRoundsEnabled ? `
+                      <div class="section">
+                        <h2>Funding Rounds</h2>
+                        <table><thead><tr><th>Round</th><th>Terms</th><th style="text-align:right">VC Stake</th><th style="text-align:right">Preference</th><th style="text-align:right">Anti-dil</th></tr></thead>
+                        <tbody>${roundRows}</tbody></table>
+                      </div>
+                      <div class="section">
+                        <h2>Post-funding Cap Table</h2>
+                        <table><thead><tr><th>Holder</th><th style="text-align:right">Equity</th><th></th></tr></thead>
+                        <tbody>${postRows}</tbody></table>
+                      </div>
+                      <div class="section">
+                        <h2>Exit Analysis @ ${fmtM(state.exitValue)}</h2>
+                        <table><tbody>
+                          <tr><td>Total founder proceeds</td><td style="text-align:right;font-weight:700">${fmtM(founderTotal)}</td></tr>
+                          <tr><td>Per-founder payout (equal split)</td><td style="text-align:right;font-weight:700">${fmtM(perFounderAmt)}</td></tr>
+                          <tr><td>VC proceeds</td><td style="text-align:right">${fmtM(vcTotal)}</td></tr>
+                          <tr><td>Total invested by VCs</td><td style="text-align:right">${fmtM(totalInvested)}</td></tr>
+                          <tr><td>VC return multiple</td><td style="text-align:right;font-weight:700">${totalInvested > 0 ? (vcTotal / totalInvested).toFixed(2) + "×" : "—"}</td></tr>
+                          <tr><td>Liquidation overhang</td><td style="text-align:right;color:${totalPref > state.exitValue * 0.3 ? "#e74c3c" : "#27ae60"}">${fmtM(totalPref)}</td></tr>
+                          ${hasRedemption ? `<tr><td>Redemption liability</td><td style="text-align:right;color:#e74c3c">${fmtM(totalRedemptionLiability)}</td></tr>` : ""}
+                        </tbody></table>
+                      </div>` : ""}
+                      ${recommendations.length > 0 ? `
+                      <h2>Playbook — Priority Actions</h2>
+                      ${playbookRows}` : ""}
+                      <div class="footer">Generated by EquiCompass · equicompass.capstack.workers.dev · For planning purposes only — not legal advice.</div>
+                      <button class="no-print" onclick="window.print()" style="position:fixed;bottom:20px;right:20px;background:${navyHex};color:white;border:none;border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;font-size:13px">🖨 Print / Save PDF</button>
+                    </body></html>`;
+
+                    const win = window.open("", "_blank");
+                    if (win) { win.document.write(html); win.document.close(); }
                   }}
-                  className="flex-1 rounded-lg border border-border px-3 py-2.5 text-xs font-semibold hover:bg-muted/60 transition-colors"
+                  className="flex-1 rounded-lg text-white px-3 py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity"
+                  style={{ background: "oklch(0.22 0.04 265)" }}
                 >
-                  📋 Copy
-                </button>
-                <button
-                  onClick={() => window.print()}
-                  className="flex-1 rounded-lg bg-primary text-primary-foreground px-3 py-2.5 text-xs font-semibold hover:opacity-90 transition-opacity"
-                >
-                  🖸️ Print / Save PDF
+                  📄 Open PDF Report
                 </button>
               </div>
-              <p className="text-[10px] text-muted-foreground text-center">Print → "Save as PDF" in destination dropdown</p>
+              <p className="text-[10px] text-muted-foreground text-center">Opens in a new tab · Print → Save as PDF</p>
             </div>
           </div>
         </div>

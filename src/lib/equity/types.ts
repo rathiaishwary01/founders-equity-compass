@@ -88,6 +88,8 @@ export const DEFAULT_VESTING: VestingConfig = {
 };
 
 export interface SimulatorState {
+  /** Company / startup name — used in reports and exports */
+  companyName?: string;
   founderSeats: number;
   market: Market;
   founderStructure: FounderStructure;
